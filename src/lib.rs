@@ -1,2 +1,0 @@
-mod random;
-mod example;

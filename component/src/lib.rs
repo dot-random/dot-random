@@ -7,21 +7,33 @@ pub struct Callback {
     key: u32,
 }
 
+#[derive(ScryptoSbor)]
+pub struct RandomComponentState {
+    queue: KeyValueStore<u32, Callback>,
+    id_seq: u32,
+}
+
 #[blueprint]
-mod airdrop {
-    struct Random {
+mod component {
+    struct RandomComponent {
         queue: KeyValueStore<u32, Callback>,
         id_seq: u32,
     }
 
-    impl Random {
-        pub fn instantiate() -> Global<Random> {
+    impl RandomComponent {
+        pub fn instantiate() -> Global<RandomComponent> {
             return Self::instantiate_local()
                 .prepare_to_globalize(OwnerRole::None)
                 .globalize();
         }
+        pub fn instantiate_addr(address: GlobalAddressReservation) -> Global<RandomComponent> {
+            return Self::instantiate_local()
+                .prepare_to_globalize(OwnerRole::None)
+                .with_address(address)
+                .globalize();
+        }
 
-        pub fn instantiate_local() -> Owned<Random> {
+        pub fn instantiate_local() -> Owned<RandomComponent> {
             return Self {
                 queue: KeyValueStore::new(),
                 id_seq: 0,
@@ -43,7 +55,7 @@ mod airdrop {
         /**
          * Called by the Watcher service. TODO: Will be protected by badges.
          */
-        pub fn process(&mut self, id: u32, random_seed: u64) {
+        pub fn process(&self, id: u32, random_seed: u64) {
             let res = self.queue.remove(&id);
             match res {
                 Some(callback) => {

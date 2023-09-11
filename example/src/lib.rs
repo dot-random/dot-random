@@ -1,18 +1,16 @@
-use rand_core::RngCore;
-use rand_core::SeedableRng;
-use rand_pcg::Pcg64Mcg;
 use scrypto::prelude::*;
+use random::Random;
 
 #[blueprint]
 mod example {
     extern_blueprint!(
         "package_rdx1pkgxxxxxxxxxfaucetxxxxxxxxx000034355863xxxxxxxxxfaucet",
-        MyRandom as Random {
+        MyRandom as RandomComponent {
             fn request_random(&self, address: ComponentAddress, method_name: String, id: u32) -> u32;
         }
     );
-    const RNG: Global<Random> = global_component!(
-        Random,
+    const RNG: Global<RandomComponent> = global_component!(
+        RandomComponent,
         "component_sim1cptxxxxxxxxxfaucetxxxxxxxxx000527798379xxxxxxxxxhkrefh"
     );
 
@@ -58,8 +56,8 @@ mod example {
             // 1. check permissions - todo.
 
             // 2. seed the random
-            let mut rng: Pcg64Mcg = Pcg64Mcg::seed_from_u64(random_seed);
-            let random_traits = rng.next_u32();
+            let rng: Random = Random::new(random_seed);
+            let random_traits = rng.next_int32();
 
             self.nfts.insert(u16::try_from(nft_id).unwrap(), random_traits);
         }
