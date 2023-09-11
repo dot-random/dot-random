@@ -1,0 +1,28 @@
+[package]
+edition = "2021"
+name = "dot-random"
+version = "0.1.0"
+
+
+[dependencies]
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+rand = "0.8.5"
+rand_pcg = "0.3.1"
+rand_core = "0.6.4"
+
+[dev-dependencies]
+transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+
+[profile.release]
+opt-level = 's'        # Optimize for size.
+lto = true             # Enable Link Time Optimization.
+codegen-units = 1      # Reduce number of codegen units to increase optimizations.
+panic = 'abort'        # Abort on panic.
+strip = "debuginfo"    # Strip debug info.
+overflow-checks = true # Panic in the case of an overflow.
+
+[lib]
+crate-type = ["cdylib", "lib"]
