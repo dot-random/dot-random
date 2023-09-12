@@ -32,9 +32,7 @@ mod example {
                 .globalize();
         }
 
-        /**
-         * Request random mint. Called by the User.
-         */
+        /// Request random mint. Called by the User.
         pub fn request_mint(&mut self) -> u32 {
             debug!("EXEC:ExampleCaller::request_mint()\n");
             /* 1. consume payment for mint here */
@@ -49,6 +47,8 @@ mod example {
             return RNG.request_random(Runtime::global_component().address(), "do_mint".into(), nft_id.into());
         }
 
+        /// Executed by our RandomWatcher off-ledger service (through [RandomComponent]).
+        /// "nft_id" here is whatever was sent above to request_random().
         pub fn do_mint(&mut self, nft_id: u32, random_seed: u64) -> u32 {
             debug!("EXEC:ExampleCaller::do_mint({:?}, {:?})\n", nft_id, random_seed);
             // 1. check permissions - todo.

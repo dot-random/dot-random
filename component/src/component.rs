@@ -42,7 +42,7 @@ mod component {
         }
 
         /**
-         * Called by the Watcher service. TODO: Will be protected by badges.
+         * Called by the Random Watcher off-ledger service. TODO: Will be protected by badges.
          */
         pub fn process(&self, id: u32, random_seed: u64) {
             debug!("EXEC:RandomComponent::process({:?}, {:?})\n", id, random_seed);

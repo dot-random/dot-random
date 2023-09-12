@@ -2,6 +2,13 @@ pub struct Random {
     seed: u64,
 }
 
+/// Will have convenient methods to get a necessary size random number.
+/// e.g. if your event happens with 0.15% chance you would do:
+/// ```rust
+///  if random.roll(1000) < 15 {
+///     // hit
+/// }
+/// ```
 impl Random {
     pub fn new(seed: u64) -> Random {
         Self { seed }
