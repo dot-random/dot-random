@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "dot-random-example"
+name = "example"
 version = "0.1.0"
 
 
@@ -11,10 +11,17 @@ random = { path = "../random" }
 component = { path = "../component" }
 
 [dev-dependencies]
+example = { path = ".", features = ["test"] }
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+radix-engine-interface = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1", default-features = false }
 scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+scrypto-test = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 
+[features]
+default = []
+test = []
 
 [lib]
 crate-type = ["cdylib", "lib"]
+path = "src/example.rs"

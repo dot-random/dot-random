@@ -35,7 +35,10 @@ fn test_request_random() {
 
     let receipt = test_runner.execute_manifest_ignoring_fee(
         ManifestBuilder::new()
-            .call_method(component, "request_random", (account_component, "test", 123u32))
+            .call_method(
+                component,
+                "request_random",
+                (account_component, "test", 123u32))
             .build(),
         vec![],
     );
