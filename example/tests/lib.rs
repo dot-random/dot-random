@@ -70,12 +70,13 @@ fn test_request_mint() {
     out[1].expect_return_value(&1u32);
 
     // 2. Watcher calls RandomComponent.process() to do the actual mint - should mint an NFT
+    let random_seed: Vec<u8>  = vec![1, 2, 3, 4, 5];
     let receipt = test_runner.execute_manifest_ignoring_fee(
         ManifestBuilder::new()
             .call_method(
                 random_component,
                 "process",
-                manifest_args!(1u32, 16u64),
+                manifest_args!(1u32, random_seed),
             )
             .build(), vec![]);
     let result = receipt.expect_commit_success();

@@ -38,7 +38,7 @@ fn test_request_random() {
             .call_method(
                 component,
                 "request_random",
-                (account_component, "test", 123u32))
+                (account_component, "test", 123u32, 4u8))
             .build(),
         vec![],
     );
