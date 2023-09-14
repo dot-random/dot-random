@@ -9,7 +9,7 @@ fn test_request_random() {
     let mut test_runner = TestRunnerBuilder::new().build();
 
     // Create an account
-    let (public_key, _private_key, account_component) = test_runner.new_allocated_account();
+    let (public_key, _private_key, account) = test_runner.new_allocated_account();
 
     // Publish package
     let package_address = test_runner.compile_and_publish(this_package!());
@@ -32,13 +32,18 @@ fn test_request_random() {
     // Test actual request_random
     let component = commit.new_component_addresses()[0];
 
+    let resource = test_runner.create_freely_mintable_fungible_resource(OwnerRole::None, Some(Decimal::ONE), DIVISIBILITY_NONE, account);
 
     let receipt = test_runner.execute_manifest_ignoring_fee(
         ManifestBuilder::new()
-            .call_method(
-                component,
-                "request_random",
-                (account_component, "test", 123u32, 4u8))
+            .take_all_from_worktop(resource, "bucket1")
+            .with_name_lookup(|builder, lookup| {
+                builder.call_method(
+                    component,
+                    "request_random",
+                    (account, "test", 123u32, lookup.bucket("bucket1"), 4u8))
+            })
+
             .build(),
         vec![],
     );

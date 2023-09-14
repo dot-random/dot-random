@@ -14,7 +14,6 @@ component = { path = "../component" }
 example = { path = ".", features = ["test"] }
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-radix-engine-interface = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1", default-features = false }
 scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 scrypto-test = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 
