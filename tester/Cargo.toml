@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "example"
+name = "tester"
 version = "0.1.0"
 
 
@@ -9,9 +9,10 @@ sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 random = { path = "../random" }
 component = { path = "../component" }
+example = { path = "../example" }
 
 [dev-dependencies]
-example = { path = ".", features = ["test"] }
+tester = { path = ".", features = ["test"] }
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }

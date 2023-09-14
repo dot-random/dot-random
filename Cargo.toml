@@ -3,7 +3,8 @@ resolver = "2"
 members = [
     "random",
     "component",
-    "example"
+    "example",
+    "tester"
 ]
 
 [profile.release]
