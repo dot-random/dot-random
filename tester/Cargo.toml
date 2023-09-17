@@ -9,7 +9,6 @@ sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 random = { path = "../random" }
 component = { path = "../component" }
-example = { path = "../example" }
 
 [dev-dependencies]
 tester = { path = ".", features = ["test"] }
