@@ -22,9 +22,9 @@ pub struct Random<'a> {
 /// ```text
 ///  let dice = random.roll(1000);
 ///  if dice < 1 {
-///    // A
+///    // A [0.1% chance]
 ///  } else if dice < 100 {
-///    // B
+///    // B [A + B has 10% chance]
 ///  } else {
 ///    // C
 ///  }

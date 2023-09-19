@@ -30,6 +30,16 @@ mod component {
                 .globalize();
         }
 
+        /// Instantiate with address reservation - for unit tests
+        pub fn instantiate_addr(
+            address: GlobalAddressReservation,
+        ) -> Global<RandomComponent> {
+            Self::instantiate_local()
+                .prepare_to_globalize(OwnerRole::None)
+                .with_address(address)
+                .globalize()
+        }
+
         pub fn instantiate_local() -> Owned<RandomComponent> {
             let badge: Bucket = ResourceBuilder::new_fungible(OwnerRole::None)
                 .divisibility(DIVISIBILITY_NONE)

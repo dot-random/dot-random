@@ -4,14 +4,17 @@ use random::Random;
 #[blueprint]
 mod caller_no_auth {
     extern_blueprint!(
-        "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqqyqszqgqqqqqqqgpwgs6ac",
+        // "package_tdx_e_1pk3phmd2ux0r0755s2xxfkhsfs9z2ncm3z5vmyqjcmr0zf34hxnx8h",
+        "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {
             fn request_random2(&self, address: ComponentAddress, method_name: String, key: u32, size: u8) -> u32;
         }
     );
+
     const RNG: Global<RandomComponent> = global_component!(
         RandomComponent,
-        "component_sim1cp0dl85e263r7u08w3etp2afm2keyu3ugc2tpgv92sfkmjrjjqdsjc"
+        // "component_tdx_e_1czmysy7cy57af6d8z42dve9pfj0nwy5zhvtvftvm43mpr6uwyp3ggz"
+        "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnf7v0gx"
     );
 
     struct ExampleCallerNoAuth {
