@@ -1,22 +1,17 @@
 [package]
 edition = "2021"
-name = "tester"
+name = "test-utils"
 version = "0.1.0"
 
 
 [dependencies]
 sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-random = { path = "../random" }
-component = { path = "../component" }
-
-[dev-dependencies]
-test-utils = { path = "../test-utils", features = ["test"] }
-tester = { path = ".", features = ["test"] }
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-scrypto-test = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+
+[dev-dependencies]
+
 
 [features]
 default = []
