@@ -8,9 +8,11 @@ use transaction::prelude::*;
 const PRE_ALLOCATED_PACKAGE: [u8; NodeId::LENGTH] = [
     13, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
 ];
-
 const PRE_ALLOCATED_COMPONENT: [u8; NodeId::LENGTH] = [
     192, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
+];
+const PRE_ALLOCATED_RESOURCE: [u8; NodeId::LENGTH] = [
+    93, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
 ];
 
 #[test]
@@ -31,14 +33,19 @@ fn test_request_mint_no_auth() {
         vec![InstructionV1::CallFunction {
             package_address: DynamicPackageAddress::Static(package_address),
             blueprint_name: "RandomComponent".to_string(),
-            function_name: "instantiate_addr".to_string(),
-            args: manifest_args!(ManifestAddressReservation(0)).into(),
+            function_name: "instantiate_addr_badge".to_string(),
+            args: manifest_args!(ManifestAddressReservation(0), ManifestAddressReservation(1)).into(),
         }],
         vec![(
-            BlueprintId::new(&package_address, "RandomComponent"),
-            GlobalAddress::new_or_panic(PRE_ALLOCATED_COMPONENT),
-        )
-            .into()],
+                 BlueprintId::new(&package_address, "RandomComponent"),
+                 GlobalAddress::new_or_panic(PRE_ALLOCATED_COMPONENT),
+             )
+                 .into(),
+             (
+                 BlueprintId::new(&RESOURCE_PACKAGE, FUNGIBLE_RESOURCE_MANAGER_BLUEPRINT.to_owned()),
+                 GlobalAddress::new_or_panic(PRE_ALLOCATED_RESOURCE),
+             )
+                 .into()],
         btreeset!(),
     );
     let res = receipt.expect_commit_success();
@@ -89,7 +96,7 @@ fn test_request_mint_no_auth() {
     out[1].expect_return_value(&1u32);
 
     // 2. Watcher calls RandomComponent.process() to do the actual mint - should mint an NFT
-    let random_seed: Vec<u8>  = vec![1, 2, 3, 4, 5];
+    let random_seed: Vec<u8> = vec![1, 2, 3, 4, 5];
     let receipt = test_runner.execute_manifest_ignoring_fee(
         ManifestBuilder::new()
             .call_method(

@@ -25,29 +25,45 @@ mod component {
 
     impl RandomComponent {
         pub fn instantiate() -> Global<RandomComponent> {
-            return Self::instantiate_local()
+            return Self::instantiate_local(None)
                 .prepare_to_globalize(OwnerRole::None)
                 .globalize();
         }
 
-        /// Instantiate with address reservation - for unit tests
+        /// Instantiate with Component address reservation - for unit tests
         pub fn instantiate_addr(
             address: GlobalAddressReservation,
         ) -> Global<RandomComponent> {
-            Self::instantiate_local()
+            Self::instantiate_local(None)
                 .prepare_to_globalize(OwnerRole::None)
                 .with_address(address)
                 .globalize()
         }
 
-        pub fn instantiate_local() -> Owned<RandomComponent> {
-            let badge: Bucket = ResourceBuilder::new_fungible(OwnerRole::None)
+        /// Instantiate with Component and Badge address reservation - for unit tests
+        pub fn instantiate_addr_badge(
+            component_address: GlobalAddressReservation,
+            badge_address: GlobalAddressReservation,
+        ) -> Global<RandomComponent> {
+            Self::instantiate_local(Some(badge_address))
+                .prepare_to_globalize(OwnerRole::None)
+                .with_address(component_address)
+                .globalize()
+        }
+
+        pub fn instantiate_local(resource_address: Option<GlobalAddressReservation>) -> Owned<RandomComponent> {
+            let mut builder = ResourceBuilder::new_fungible(OwnerRole::None)
                 .divisibility(DIVISIBILITY_NONE)
                 .metadata(metadata!(
                     init {
                         "name" => "A badge presented during the callback execution.", locked;
                     }
-                ))
+                ));
+
+            if resource_address.is_some() {
+                builder = builder.with_address(resource_address.unwrap());
+            }
+            let badge: Bucket = builder
                 .mint_initial_supply(100)
                 .into();
             let badge_addr: ResourceAddress = badge.resource_address();
