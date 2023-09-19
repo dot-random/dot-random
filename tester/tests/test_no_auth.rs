@@ -1,4 +1,5 @@
 use std::env;
+use radix_engine::vm::NativeVmExtension;
 
 // use radix_engine::types::*;
 use scrypto_unit::*;
@@ -11,9 +12,49 @@ const PRE_ALLOCATED_PACKAGE: [u8; NodeId::LENGTH] = [
 const PRE_ALLOCATED_COMPONENT: [u8; NodeId::LENGTH] = [
     192, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
 ];
-const PRE_ALLOCATED_RESOURCE: [u8; NodeId::LENGTH] = [
+const PRE_ALLOCATED_BADGE: [u8; NodeId::LENGTH] = [
     93, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
 ];
+
+fn deploy_random_component<E: NativeVmExtension, D: TestDatabase>(dir_component: &str, test_runner: &mut TestRunner<E, D>)
+    -> (PackageAddress, ComponentAddress, ResourceAddress) {
+    let rc_package = PackageAddress::new_or_panic(PRE_ALLOCATED_PACKAGE);
+    test_runner
+        .compile_and_publish_at_address(dir_component, rc_package);
+
+    let receipt = test_runner.execute_system_transaction_with_preallocated_addresses(
+        vec![InstructionV1::CallFunction {
+            package_address: DynamicPackageAddress::Static(rc_package),
+            blueprint_name: "RandomComponent".to_string(),
+            function_name: "instantiate_addr_badge".to_string(),
+            args: manifest_args!(ManifestAddressReservation(0), ManifestAddressReservation(1)).into(),
+        }],
+        vec![(
+                 BlueprintId::new(&rc_package, "RandomComponent"),
+                 GlobalAddress::new_or_panic(PRE_ALLOCATED_COMPONENT),
+             )
+                 .into(),
+             (
+                 BlueprintId::new(&RESOURCE_PACKAGE, FUNGIBLE_RESOURCE_MANAGER_BLUEPRINT.to_owned()),
+                 GlobalAddress::new_or_panic(PRE_ALLOCATED_BADGE),
+             )
+                 .into()],
+        btreeset!(),
+    );
+    let res = receipt.expect_commit_success();
+    let rc_component = res.new_component_addresses()[0];
+    let rc_badge = res.new_resource_addresses()[0];
+
+    let encoder = AddressBech32Encoder::for_simulator();
+    let package_addr = encoder.encode(rc_package.as_ref());
+    let component_addr = encoder.encode(rc_component.as_ref());
+    let badge_addr = encoder.encode(rc_badge.as_ref());
+    println!("RandomComponent:package_addr: {:?}\n", package_addr);
+    println!("RandomComponent:component_addr: {:?}\n", component_addr);
+    println!("RandomComponent:resource_addr: {:?}\n", badge_addr);
+
+    return (rc_package, rc_component, rc_badge);
+}
 
 #[test]
 fn test_request_mint_no_auth() {
@@ -25,42 +66,7 @@ fn test_request_mint_no_auth() {
     let mut test_runner = TestRunnerBuilder::new().build();
 
     // Deploy RandomComponent
-    let package_address = PackageAddress::new_or_panic(PRE_ALLOCATED_PACKAGE);
-    test_runner
-        .compile_and_publish_at_address(dir_component, package_address);
-
-    let receipt = test_runner.execute_system_transaction_with_preallocated_addresses(
-        vec![InstructionV1::CallFunction {
-            package_address: DynamicPackageAddress::Static(package_address),
-            blueprint_name: "RandomComponent".to_string(),
-            function_name: "instantiate_addr_badge".to_string(),
-            args: manifest_args!(ManifestAddressReservation(0), ManifestAddressReservation(1)).into(),
-        }],
-        vec![(
-                 BlueprintId::new(&package_address, "RandomComponent"),
-                 GlobalAddress::new_or_panic(PRE_ALLOCATED_COMPONENT),
-             )
-                 .into(),
-             (
-                 BlueprintId::new(&RESOURCE_PACKAGE, FUNGIBLE_RESOURCE_MANAGER_BLUEPRINT.to_owned()),
-                 GlobalAddress::new_or_panic(PRE_ALLOCATED_RESOURCE),
-             )
-                 .into()],
-        btreeset!(),
-    );
-    let res = receipt.expect_commit_success();
-    let random_component = res.new_component_addresses()[0];
-
-    println!("resource_addr:\n{:?}\n", res.new_resource_addresses());
-
-    let encoder = AddressBech32Encoder::for_simulator();
-    let package_addr = encoder.encode(package_address.as_ref());
-    let component_addr = encoder.encode(random_component.as_ref());
-    let resource_address = res.new_resource_addresses()[0];
-    let resource_addr = encoder.encode(resource_address.as_ref());
-    println!("package_addr:\n{:?}\n", package_addr);
-    println!("component_addr:\n{:?}\n", component_addr);
-    println!("resource_addr:\n{:?}\n", resource_addr);
+    let (_, rc_component, _) = deploy_random_component(dir_component, &mut test_runner);
 
     // Deploy ExampleCaller
     let package_address2 = test_runner.compile_and_publish_retain_blueprints(
@@ -100,7 +106,7 @@ fn test_request_mint_no_auth() {
     let receipt = test_runner.execute_manifest_ignoring_fee(
         ManifestBuilder::new()
             .call_method(
-                random_component,
+                rc_component,
                 "process",
                 manifest_args!(random_seed),
             )

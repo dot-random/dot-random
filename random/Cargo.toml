@@ -5,15 +5,10 @@ version = "0.1.0"
 
 
 [dependencies]
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
 
 [dev-dependencies]
 random = { path = ".", features = ["test"] }
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
-scrypto-test = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.12.1" }
+
 
 [features]
 default = []
