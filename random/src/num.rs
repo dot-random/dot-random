@@ -13,4 +13,4 @@ macro_rules! impl_byte_nums (( $($int:ident),* ) => {
     )*
 });
 
-impl_byte_nums!(u8, u16, u32, u64);
+impl_byte_nums!(u8, u16, u32, u64, usize);

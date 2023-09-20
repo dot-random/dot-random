@@ -60,6 +60,8 @@ impl<'a> Random<'a> {
         return res;
     }
 
+    /// Returns a random number of size T (u8, u16, u32, u64, usize).
+    ///
     pub fn next_int<T>(&mut self) -> T where T: Num {
         let size = std::mem::size_of::<T>();
         let bytes = self.slice(size);
