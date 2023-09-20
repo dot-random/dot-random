@@ -4,10 +4,10 @@ use scrypto::prelude::*;
 pub struct Callback {
     address: ComponentAddress,
     method_name: String,
+    on_error: String,
     resource: Option<ResourceAddress>,
     amount: Decimal,
     key: u32,
-    size: u8,
 }
 
 #[blueprint]
@@ -84,7 +84,7 @@ mod component {
          * Called by any external Component.
          * the Caller should also pass a badge that controls access to <method_name>().
          */
-        pub fn request_random(&mut self, address: ComponentAddress, method_name: String, key: u32, badge: FungibleBucket, size: u8) -> u32 {
+        pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge: FungibleBucket) -> u32 {
             debug!("EXEC:RandomComponent::request_random()\n");
             let res: ResourceAddress = badge.resource_address();
             let amount: Decimal = badge.amount();
@@ -108,7 +108,7 @@ mod component {
 
             self.id_seq += 1;
             let callback_id: u32 = self.id_seq;
-            self.queue.insert(callback_id, Callback { address, method_name, key, resource, amount, size });
+            self.queue.insert(callback_id, Callback { address, method_name, on_error, key, resource, amount });
             return callback_id;
         }
 
@@ -116,14 +116,14 @@ mod component {
          * Called by any external Component.
          * the Caller should protect access to <method_name>() with a badge from [badge_vault].
          */
-        pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, key: u32, size: u8) -> u32 {
+        pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32 {
             debug!("EXEC:RandomComponent::request_random2()\n");
 
             self.id_seq += 1;
             let callback_id: u32 = self.id_seq;
             let resource = None;
             let amount = Decimal::ZERO;
-            self.queue.insert(callback_id, Callback { address, method_name, key, resource, amount, size });
+            self.queue.insert(callback_id, Callback { address, method_name, on_error, key, resource, amount });
             return callback_id;
         }
 

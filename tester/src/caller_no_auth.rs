@@ -7,7 +7,7 @@ mod caller_no_auth {
         // "package_tdx_e_1pk3phmd2ux0r0755s2xxfkhsfs9z2ncm3z5vmyqjcmr0zf34hxnx8h",
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {
-            fn request_random2(&self, address: ComponentAddress, method_name: String, key: u32, size: u8) -> u32;
+            fn request_random2(&self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32;
         }
     );
 
@@ -50,27 +50,27 @@ mod caller_no_auth {
             let address = Runtime::global_component().address();
             // The method on your component to call back
             let method_name = "do_mint".into();
+            // The method on yor component that will be called if do_mint() panics
+            let on_error = "abort_mint".into();
             // A key that will be sent back to you with the callback
             let key = nft_id.into();
-            // How many random bytes you need during the execution of your callback ("do_mint").
-            // Getting a random u32 costs 4 bytes, u16 - 2 bytes, u8 or bool - 1 byte.
-            // You should request as few bytes as possible, as long as it covers your needs (otherwise it will panic).
-            // Should be in range [1, 32].
-            let size: u8 = 4u8;
-            return RNG.request_random2(address, method_name, key, size);
+
+            return RNG.request_random2(address, method_name, on_error, key);
         }
 
         /// Executed by our RandomWatcher off-ledger service (through [RandomComponent]).
         /// "nft_id" here is whatever was sent to RNG.request_random() above.
-        pub fn do_mint(&mut self, nft_id: u32, random_seed: Vec<u8>) -> u32 {
+        pub fn do_mint(&mut self, nft_id: u32, random_seed: Vec<u8>) {
             debug!("EXEC:ExampleCallerNoAuth::do_mint({:?}, {:?})\n", nft_id, random_seed);
             // 2. seed the random
             let mut random: Random = Random::new(random_seed.as_slice());
             let random_traits = random.next_int::<u32>();
 
             self.nfts.insert(nft_id as u16, random_traits);
-            // TODO: figure out how to `call_raw()` without return type.
-            return nft_id;
+        }
+
+        pub fn abort_mint(&mut self, nft_id: u32) {
+            // revert what you did in `request_mint()` here
         }
     }
 }
