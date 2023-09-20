@@ -12,8 +12,8 @@ const RANDOM_BADGE: [u8; NodeId::LENGTH] = [
     93, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
 ];
 
-pub fn deploy_random_component<E: NativeVmExtension, D: TestDatabase>(dir_component: &str, test_runner: &mut TestRunner<E, D>)
-                                                                  -> (PackageAddress, ComponentAddress, ResourceAddress) {
+pub fn random_component_deploy<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>, dir_component: &str)
+                                                                      -> (PackageAddress, ComponentAddress, ResourceAddress) {
     let rc_package = PackageAddress::new_or_panic(RANDOM_PACKAGE);
     test_runner
         .compile_and_publish_at_address(dir_component, rc_package);
@@ -50,4 +50,18 @@ pub fn deploy_random_component<E: NativeVmExtension, D: TestDatabase>(dir_compon
     println!("RandomComponent:resource_addr: {:?}\n", badge_addr);
 
     return (rc_package, rc_component, rc_badge);
+}
+
+pub fn random_component_process<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>,
+                                                                       rc_component: ComponentAddress, random_bytes: Vec<u8>) {
+    let receipt = test_runner.execute_manifest_ignoring_fee(
+        ManifestBuilder::new()
+            .call_method(
+                rc_component,
+                "process",
+                manifest_args!(random_bytes),
+            )
+            .build(), vec![]);
+    let result = receipt.expect_commit_success();
+    result.outcome.expect_success();
 }

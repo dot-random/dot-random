@@ -2,7 +2,7 @@ use std::env;
 
 use scrypto_unit::*;
 use transaction::prelude::*;
-use test_utils::deploy_random_component;
+use test_utils::{random_component_process, random_component_deploy};
 
 
 #[test]
@@ -15,7 +15,7 @@ fn test_request_mint_no_auth() {
     let mut test_runner = TestRunnerBuilder::new().build();
 
     // Deploy RandomComponent
-    let (_, rc_component, _) = deploy_random_component(dir_component, &mut test_runner);
+    let (_, rc_component, _) = random_component_deploy(&mut test_runner, dir_component);
 
     // Deploy ExampleCaller
     let package_address2 = test_runner.compile_and_publish_retain_blueprints(
@@ -52,16 +52,7 @@ fn test_request_mint_no_auth() {
 
     // 2. Watcher calls RandomComponent.process() to do the actual mint - should mint an NFT
     let random_seed: Vec<u8> = vec![1, 2, 3, 4, 5];
-    let receipt = test_runner.execute_manifest_ignoring_fee(
-        ManifestBuilder::new()
-            .call_method(
-                rc_component,
-                "process",
-                manifest_args!(random_seed),
-            )
-            .build(), vec![]);
-    let result = receipt.expect_commit_success();
-    result.outcome.expect_success();
+    random_component_process(&mut test_runner, rc_component, random_seed);
 
     // Assert
 }
