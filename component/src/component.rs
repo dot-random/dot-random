@@ -142,14 +142,14 @@ mod component {
                         if let Some(mut v) = opt {
                             let bucket = v.take(callback.amount).as_fungible();
                             let comp: Global<AnyComponent> = Global::from(callback.address);
-                            comp.call_raw::<u32>(callback.method_name.as_str(), scrypto_args!(callback.key, bucket, random_seed));
+                            comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, bucket, random_seed));
                         }
                     }
                 } else {
                     let proof = self.badge_vault.as_fungible().create_proof_of_amount(Decimal::ONE);
                     proof.authorize(|| {
                         let comp: Global<AnyComponent> = Global::from(callback.address);
-                        comp.call_raw::<u32>(callback.method_name.as_str(), scrypto_args!(callback.key, random_seed));
+                        comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, random_seed));
                     });
                 }
 
