@@ -2,7 +2,7 @@ use std::env;
 
 use scrypto_unit::*;
 use transaction::prelude::*;
-use test_utils::{random_component_process, random_component_deploy};
+use test_utils::{random_component_process, random_component_deploy_dir};
 
 
 #[test]
@@ -15,7 +15,7 @@ fn test_request_mint_no_auth() {
     let mut test_runner = TestRunnerBuilder::new().build();
 
     // Deploy RandomComponent
-    let (_, rc_component, _) = random_component_deploy(&mut test_runner, dir_component);
+    let (_, rc_component, _) = random_component_deploy_dir(&mut test_runner, dir_component);
 
     // Deploy ExampleCaller
     let package_address2 = test_runner.publish_retain_blueprints(
