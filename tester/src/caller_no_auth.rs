@@ -5,6 +5,7 @@ use random::Random;
 mod caller_no_auth {
     extern_blueprint!(
         // "package_tdx_e_1p5p5fznvyrurwf87k5hmgp94l9lgce2l8ady5eznu6x245qprdvmkd",
+        // "package_tdx_2_1pkfavzgzkjqk8dunuyuuzkkewsy7n2w00hfms2ndmydf02eake86py",
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {
             fn request_random2(&self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32;
@@ -14,6 +15,7 @@ mod caller_no_auth {
     const RNG: Global<RandomComponent> = global_component!(
         RandomComponent,
         // "component_tdx_e_1cr0a4l9n4w6z3tzh0pwaah8n56q6g8h4m632x3aax882ajcj579u0a"
+        // "component_tdx_2_1cpj7d0zu3rruked2k4lk4y4l523u46vns544kewheppmcysngzraws"
         "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnf7v0gx"
     );
 
