@@ -20,7 +20,7 @@ See an example in  [badge_auth.rs](https://github.com/Mleekko/dot-random-example
 
 #### IDs on RCNet v3.1:
 ```html
-package_tdx_e_1p5jt8mth9qfzaj4x6ned23dcss6wudjgxgwyr5uc6f6gja9gwz4nxh
-component_tdx_e_1cpdq9kvkhnv2yp53zylvlmq74hp90263hxa3zxewxtsxmpdwqhvsxa
-resource_tdx_e_1t4mscfp8qxku6pyxm69w0t2mrt8f5sn7f8ecu5agd299xgxtprg4vy
+package_tdx_e_1p5p5fznvyrurwf87k5hmgp94l9lgce2l8ady5eznu6x245qprdvmkd
+component_tdx_e_1cr0a4l9n4w6z3tzh0pwaah8n56q6g8h4m632x3aax882ajcj579u0a
+resource_tdx_e_1t4f5n9ggy0uky9aqqax78d5322y2e4hq28vrutlh2thxn9j3fdzlus
 ```
