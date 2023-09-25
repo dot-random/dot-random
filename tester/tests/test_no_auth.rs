@@ -18,7 +18,7 @@ fn test_request_mint_no_auth() {
     let (_, rc_component, _) = random_component_deploy(&mut test_runner, dir_component);
 
     // Deploy ExampleCaller
-    let package_address2 = test_runner.compile_and_publish_retain_blueprints(
+    let package_address2 = test_runner.publish_retain_blueprints(
         dir_example,
         |blueprint, _| blueprint.eq("ExampleCallerNoAuth"),
     );

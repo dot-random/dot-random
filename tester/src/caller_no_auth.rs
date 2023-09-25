@@ -4,7 +4,7 @@ use random::Random;
 #[blueprint]
 mod caller_no_auth {
     extern_blueprint!(
-        // "package_tdx_e_1pk3phmd2ux0r0755s2xxfkhsfs9z2ncm3z5vmyqjcmr0zf34hxnx8h",
+        // "package_tdx_e_1p5jt8mth9qfzaj4x6ned23dcss6wudjgxgwyr5uc6f6gja9gwz4nxh",
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {
             fn request_random2(&self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32;
@@ -13,7 +13,7 @@ mod caller_no_auth {
 
     const RNG: Global<RandomComponent> = global_component!(
         RandomComponent,
-        // "component_tdx_e_1czmysy7cy57af6d8z42dve9pfj0nwy5zhvtvftvm43mpr6uwyp3ggz"
+        // "component_tdx_e_1cpdq9kvkhnv2yp53zylvlmq74hp90263hxa3zxewxtsxmpdwqhvsxa"
         "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnf7v0gx"
     );
 
@@ -63,7 +63,7 @@ mod caller_no_auth {
         pub fn do_mint(&mut self, nft_id: u32, random_seed: Vec<u8>) {
             debug!("EXEC:ExampleCallerNoAuth::do_mint({:?}, {:?})\n", nft_id, random_seed);
             // 2. seed the random
-            let mut random: Random = Random::new(random_seed.as_slice());
+            let mut random: Random = Random::new(&random_seed);
             let random_traits = random.next_int::<u32>();
 
             self.nfts.insert(nft_id as u16, random_traits);

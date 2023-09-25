@@ -2,6 +2,7 @@
 .Random - randomness on Radix ledger
 
 
+#### Uses Scrypto `v1.0.0`
 ### Usage Examples
 See [dot-random-examples](https://github.com/Mleekko/dot-random-examples).
 
@@ -19,7 +20,7 @@ See an example in  [badge_auth.rs](https://github.com/Mleekko/dot-random-example
 
 #### IDs on RCNet v3.1:
 ```html
-package_tdx_e_1pk3phmd2ux0r0755s2xxfkhsfs9z2ncm3z5vmyqjcmr0zf34hxnx8h
-component_tdx_e_1czmysy7cy57af6d8z42dve9pfj0nwy5zhvtvftvm43mpr6uwyp3ggz
-resource_tdx_e_1tkkcesj4fdz0tyan29wtc52fzsxajv077wz8f4hmruca9dtx56vvn4
+package_tdx_e_1p5jt8mth9qfzaj4x6ned23dcss6wudjgxgwyr5uc6f6gja9gwz4nxh
+component_tdx_e_1cpdq9kvkhnv2yp53zylvlmq74hp90263hxa3zxewxtsxmpdwqhvsxa
+resource_tdx_e_1t4mscfp8qxku6pyxm69w0t2mrt8f5sn7f8ecu5agd299xgxtprg4vy
 ```

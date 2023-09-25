@@ -10,9 +10,11 @@ pub struct Callback {
     key: u32,
 }
 
-#[blueprint]
-mod component {
+const MAX_BATCH_SIZE: u32 = 10;
 
+#[blueprint]
+#[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, bool)]
+mod component {
     struct RandomComponent {
         vaults: KeyValueStore<ResourceAddress, Vault>,
         queue: KeyValueStore<u32, Callback>,
@@ -21,7 +23,10 @@ mod component {
 
         id_seq: u32,
         last_processed_id: u32,
+
+        black_list: KeyValueStore<ComponentAddress, bool>,
     }
+
 
     impl RandomComponent {
         pub fn instantiate() -> Global<RandomComponent> {
@@ -66,16 +71,17 @@ mod component {
             let badge: Bucket = builder
                 .mint_initial_supply(100)
                 .into();
-            let badge_addr: ResourceAddress = badge.resource_address();
-            debug!("badge_addr:\n{:?}\n", badge_addr );
+            debug!("badge_addr:\n{:?}\n", badge.resource_address() );
             return Self {
-                vaults: KeyValueStore::new(),
-                queue: KeyValueStore::new(),
+                vaults: KeyValueStore::new_with_registered_type(),
+                queue: KeyValueStore::new_with_registered_type(),
 
                 badge_vault: Vault::with_bucket(badge),
 
                 id_seq: 0,
                 last_processed_id: 0,
+
+                black_list: KeyValueStore::new_with_registered_type(),
             }
                 .instantiate();
         }
@@ -86,6 +92,10 @@ mod component {
          */
         pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge: FungibleBucket) -> u32 {
             debug!("EXEC:RandomComponent::request_random()\n");
+
+            let option: Option<_> = self.black_list.get(&address);
+            assert!(option.is_none(), "Ignoring blacklisted component address: {:?}.", address);
+
             let res: ResourceAddress = badge.resource_address();
             let amount: Decimal = badge.amount();
             let vault;
@@ -119,6 +129,9 @@ mod component {
         pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32 {
             debug!("EXEC:RandomComponent::request_random2()\n");
 
+            let option: Option<_> = self.black_list.get(&address);
+            assert!(option.is_none(), "Ignoring blacklisted component address: {:?}.", address);
+
             self.id_seq += 1;
             let callback_id: u32 = self.id_seq;
             let resource = None;
@@ -132,9 +145,40 @@ mod component {
          */
         pub fn process(&mut self, random_seed: Vec<u8>) {
             debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})\n", self.last_processed_id, self.id_seq, random_seed);
-            if self.last_processed_id < self.id_seq {
+
+            let end = self.last_processed_id + MAX_BATCH_SIZE;
+            while self.last_processed_id < self.id_seq && self.last_processed_id < end  {
                 let id = self.last_processed_id + 1;
-                let callback = self.queue.remove(&id).unwrap();
+
+                self.do_process(id, random_seed.clone());
+                self.last_processed_id = id;
+            }
+        }
+
+        /// Test-only. Doesn't require auth badge and uses `random_seed` as is.
+        // TODO: test component ?
+        // #[cfg(test)]
+        // pub fn test_process(&mut self, random_seed: Vec<u8>) {
+        //     debug!("EXEC:RandomComponent::test_process({:?}..{:?}, {:?})\n", self.last_processed_id, self.id_seq, random_seed);
+        //     if self.last_processed_id < self.id_seq {
+        //         let id = self.last_processed_id + 1;
+        //
+        //         self.do_process(id, random_seed);
+        //         self.last_processed_id = id;
+        //     }
+        // }
+
+        /**
+         * Called to preview the execution result (Success/Failure) of a specific Callback
+         */
+        pub fn process_one(&mut self, callback_id: u32, random_seed: Vec<u8>) {
+            self.do_process(callback_id, random_seed);
+        }
+
+        fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {
+            let queue_item: Option<Callback> = self.queue.remove(&callback_id);
+            if queue_item.is_some() {
+                let callback = queue_item.unwrap();
                 let resource_opt = callback.resource;
                 if let Some(resource) = resource_opt {
                     if callback.amount.is_positive() {
@@ -152,9 +196,29 @@ mod component {
                         comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, random_seed));
                     });
                 }
-
-                self.last_processed_id = id;
             }
+        }
+
+
+        /// Blacklists a caller component, preventing its callbacks from being registered.
+        /// A typical reason for blacklisting is improper Caller's Component implementation, e.g.:
+        /// - missing <method_name> on the Component
+        /// - missing <on_error>
+        /// - incompatible method signature(s)
+        /// The TX attempting to register a callback to such component will fail.
+        pub fn blacklist(&mut self, address: ComponentAddress) {
+            self.black_list.insert(address, true);
+        }
+
+        /// Remove an address from the blacklist
+        pub fn remove_blacklist(&mut self, address: ComponentAddress) {
+            self.black_list.remove(&address);
+        }
+
+        /// Evicts a faulty callback from the queue.
+        /// A callback is considered faulty when both <method_name> and <on_error> panic during the simulation.
+        pub fn evict(&mut self, callback_id: u32) {
+            self.queue.remove(&callback_id);
         }
     }
 }
