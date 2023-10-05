@@ -7,6 +7,9 @@
 See [examples](https://github.com/dot-random/examples).
 
 
+#### Random - 1Kb dependency
+
+
 ##### Protecting your callback method.
 There are two ways to ensure that only RandomComponent can call your callback method:
 1. Use `request_random()`, which accepts a bucket, and pass it a token. The bucket will be passed back to you in the callback.  
@@ -18,11 +21,9 @@ See an example in  [badge_auth.rs](https://github.com/dot-random/examples/blob/m
 
 
 
-#### IDs on RCNet v3.1:
+#### IDs on Mainnet:
 ```html
-package_tdx_e_1p5p5fznvyrurwf87k5hmgp94l9lgce2l8ady5eznu6x245qprdvmkd
-component_tdx_e_1cr0a4l9n4w6z3tzh0pwaah8n56q6g8h4m632x3aax882ajcj579u0a
-resource_tdx_e_1t4f5n9ggy0uky9aqqax78d5322y2e4hq28vrutlh2thxn9j3fdzlus
+Not deployed yet
 ```
 #### IDs on StokeNet:
 ```html

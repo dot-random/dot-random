@@ -13,7 +13,7 @@ pub struct Callback {
 const MAX_BATCH_SIZE: u32 = 10;
 
 #[blueprint]
-#[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, bool)]
+#[types(u32, Callback, ResourceAddress, Vault)]
 mod component {
     struct RandomComponent {
         vaults: KeyValueStore<ResourceAddress, Vault>,
@@ -23,8 +23,6 @@ mod component {
 
         id_seq: u32,
         last_processed_id: u32,
-
-        black_list: KeyValueStore<ComponentAddress, bool>,
     }
 
 
@@ -80,8 +78,6 @@ mod component {
 
                 id_seq: 0,
                 last_processed_id: 0,
-
-                black_list: KeyValueStore::new_with_registered_type(),
             }
                 .instantiate();
         }
@@ -92,9 +88,6 @@ mod component {
          */
         pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge: FungibleBucket) -> u32 {
             debug!("EXEC:RandomComponent::request_random()\n");
-
-            let option: Option<_> = self.black_list.get(&address);
-            assert!(option.is_none(), "Ignoring blacklisted component address: {:?}.", address);
 
             let res: ResourceAddress = badge.resource_address();
             let amount: Decimal = badge.amount();
@@ -129,9 +122,6 @@ mod component {
         pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32 {
             debug!("EXEC:RandomComponent::request_random2()\n");
 
-            let option: Option<_> = self.black_list.get(&address);
-            assert!(option.is_none(), "Ignoring blacklisted component address: {:?}.", address);
-
             self.id_seq += 1;
             let callback_id: u32 = self.id_seq;
             let resource = None;
@@ -162,10 +152,12 @@ mod component {
          * Also called to preview the execution result (Success/Failure) of a specific Callback.
          */
         pub fn process_one(&mut self, callback_id: u32, random_seed: Vec<u8>) {
+            debug!("EXEC:RandomComponent::process_one({:?})\n", callback_id);
             self.do_process(callback_id, random_seed);
         }
 
         pub fn handle_error(&mut self, callback_id: u32) {
+            debug!("EXEC:RandomComponent::handle_error({:?})\n", callback_id);
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
                 let callback = queue_item.unwrap();
@@ -211,22 +203,6 @@ mod component {
                     });
                 }
             }
-        }
-
-
-        /// Blacklists a caller component, preventing its callbacks from being registered.
-        /// A typical reason for blacklisting is improper Caller's Component implementation, e.g.:
-        /// - missing <method_name> on the Component
-        /// - missing <on_error>
-        /// - incompatible method signature(s)
-        /// The TX attempting to register a callback to such component will fail.
-        pub fn blacklist(&mut self, address: ComponentAddress) {
-            self.black_list.insert(address, true);
-        }
-
-        /// Remove an address from the blacklist
-        pub fn remove_blacklist(&mut self, address: ComponentAddress) {
-            self.black_list.remove(&address);
         }
 
         /// Evicts a faulty callback from the queue.

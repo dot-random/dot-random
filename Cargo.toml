@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "random",
     "component",
+    "test-component",
     "test-utils",
     "tester",
 ]

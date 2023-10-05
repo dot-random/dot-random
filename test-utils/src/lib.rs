@@ -1,4 +1,6 @@
 use std::path::PathBuf;
+
+use radix_engine::transaction::{CommitResult, TransactionReceipt};
 use radix_engine::vm::NativeVmExtension;
 use scrypto_unit::*;
 use transaction::prelude::*;
@@ -22,7 +24,7 @@ pub fn random_component_deploy<E: NativeVmExtension, D: TestDatabase>(test_runne
 }
 
 pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>, dir_component: &str)
-                                                                      -> (PackageAddress, ComponentAddress, ResourceAddress) {
+                                                                          -> (PackageAddress, ComponentAddress, ResourceAddress) {
     let rc_package = PackageAddress::new_or_panic(RANDOM_PACKAGE);
     test_runner
         .compile_and_publish_at_address(dir_component, rc_package);
@@ -61,8 +63,15 @@ pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>(test_r
     return (rc_package, rc_component, rc_badge);
 }
 
-pub fn random_component_process<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>,
-                                                                       rc_component: ComponentAddress, random_bytes: Vec<u8>) {
+pub fn random_component_process<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>, rc_component: ComponentAddress, random_bytes: Vec<u8>) -> CommitResult {
+    let receipt = random_component_try_process(test_runner, rc_component, random_bytes);
+    let result = receipt.expect_commit_success();
+    result.outcome.expect_success();
+    return result.clone();
+}
+
+pub fn random_component_try_process<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>,
+                                                                           rc_component: ComponentAddress, random_bytes: Vec<u8>) -> TransactionReceipt {
     let receipt = test_runner.execute_manifest_ignoring_fee(
         ManifestBuilder::new()
             .call_method(
@@ -71,8 +80,43 @@ pub fn random_component_process<E: NativeVmExtension, D: TestDatabase>(test_runn
                 manifest_args!(random_bytes),
             )
             .build(), vec![]);
+    return receipt;
+}
+
+pub fn random_component_process_one<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>,
+                                                                           rc_component: ComponentAddress, callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
+    let receipt = random_component_try_process_one(test_runner, rc_component, callback_id, random_bytes);
     let result = receipt.expect_commit_success();
     result.outcome.expect_success();
+    return result.clone();
+}
+
+pub fn random_component_try_process_one<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>,
+                                                                               rc_component: ComponentAddress, callback_id: u32, random_bytes: Vec<u8>) -> TransactionReceipt {
+    let receipt = test_runner.execute_manifest_ignoring_fee(
+        ManifestBuilder::new()
+            .call_method(
+                rc_component,
+                "process_one",
+                manifest_args!(callback_id, random_bytes),
+            )
+            .build(), vec![]);
+    return receipt;
+}
+
+pub fn random_component_handle_error<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>,
+                                                                            rc_component: ComponentAddress, callback_id: u32) -> CommitResult {
+    let receipt = test_runner.execute_manifest_ignoring_fee(
+        ManifestBuilder::new()
+            .call_method(
+                rc_component,
+                "handle_error",
+                manifest_args!(callback_id),
+            )
+            .build(), vec![]);
+    let result = receipt.expect_commit_success();
+    result.outcome.expect_success();
+    return result.clone();
 }
 
 
@@ -100,6 +144,6 @@ pub fn get_dependency_dir(repo_name: &str, commit_hash: &str) -> Option<PathBuf>
 
 fn get_test_component_dir(repo_name: &str, commit_hash: &str) -> PathBuf {
     let dot_random_dir = get_dependency_dir(repo_name, commit_hash).unwrap();
-    let component_path = add_dir(dot_random_dir, "component");
+    let component_path = add_dir(dot_random_dir, "test-component");
     return component_path;
 }
