@@ -3,6 +3,23 @@ use scrypto::prelude::*;
 use scrypto_unit::*;
 use transaction::builder::ManifestBuilder;
 
+
+#[test]
+fn test_generate_royalties() {
+    for i in 1..61 {
+        println!("
+        pub fn dynamic_royalty_{}(&self) {{
+            debug!(\"EXEC:FeeAdvances::dynamic_royalty_{}()\");
+        }}", i, i);
+    }
+
+    println!();
+
+    for i in 1..61 {
+        println!("                        dynamic_royalty_{} => Usd(dec!(0.{})), locked;", i, format!("{:0>2}", i));
+    }
+}
+
 #[test]
 fn test_request_random() {
     // Set up environment.

@@ -21,4 +21,4 @@ test = []
 
 [lib]
 crate-type = ["cdylib", "lib"]
-path = "src/component.rs"
+path = "src/lib.rs"

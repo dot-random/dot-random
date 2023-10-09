@@ -69,7 +69,7 @@ mod component {
             let badge: Bucket = builder
                 .mint_initial_supply(100)
                 .into();
-            debug!("badge_addr:\n{:?}\n", badge.resource_address() );
+            debug!("badge_addr:\n{:?}", badge.resource_address() );
             return Self {
                 vaults: KeyValueStore::new_with_registered_type(),
                 queue: KeyValueStore::new_with_registered_type(),
@@ -87,7 +87,7 @@ mod component {
          * the Caller should also pass a badge that controls access to <method_name>().
          */
         pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge: FungibleBucket) -> u32 {
-            debug!("EXEC:RandomComponent::request_random()\n");
+            debug!("EXEC:RandomComponent::request_random()");
 
             let res: ResourceAddress = badge.resource_address();
             let amount: Decimal = badge.amount();
@@ -120,7 +120,7 @@ mod component {
          * the Caller should protect access to <method_name>() with a badge from [badge_vault].
          */
         pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32 {
-            debug!("EXEC:RandomComponent::request_random2()\n");
+            debug!("EXEC:RandomComponent::request_random2()");
 
             self.id_seq += 1;
             let callback_id: u32 = self.id_seq;
@@ -136,7 +136,7 @@ mod component {
          * TODO: Will be protected by badges.
          */
         pub fn process(&mut self, random_seed: Vec<u8>) {
-            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})\n", self.last_processed_id, self.id_seq, random_seed);
+            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.id_seq, random_seed);
 
             let end = self.last_processed_id + MAX_BATCH_SIZE;
             while self.last_processed_id < self.id_seq && self.last_processed_id < end  {
@@ -152,12 +152,12 @@ mod component {
          * Also called to preview the execution result (Success/Failure) of a specific Callback.
          */
         pub fn process_one(&mut self, callback_id: u32, random_seed: Vec<u8>) {
-            debug!("EXEC:RandomComponent::process_one({:?})\n", callback_id);
+            debug!("EXEC:RandomComponent::process_one({:?})", callback_id);
             self.do_process(callback_id, random_seed);
         }
 
         pub fn handle_error(&mut self, callback_id: u32) {
-            debug!("EXEC:RandomComponent::handle_error({:?})\n", callback_id);
+            debug!("EXEC:RandomComponent::handle_error({:?})", callback_id);
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
                 let callback = queue_item.unwrap();

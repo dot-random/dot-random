@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+use crate::royalties::royalties::{FeeAdvances, FeeAdvancesFunctions};
 
 #[derive(ScryptoSbor)]
 pub struct Callback {
@@ -13,7 +14,7 @@ pub struct Callback {
 const MAX_BATCH_SIZE: u32 = 10;
 
 #[blueprint]
-#[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, bool)]
+#[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
 mod component {
     struct RandomComponent {
         vaults: KeyValueStore<ResourceAddress, Vault>,
@@ -24,15 +25,16 @@ mod component {
         id_seq: u32,
         last_processed_id: u32,
 
-        black_list: KeyValueStore<ComponentAddress, bool>,
+        caller_royalties: KeyValueStore<ComponentAddress, u8>,
+        advances: Global<FeeAdvances>,
     }
 
 
     impl RandomComponent {
         pub fn instantiate() -> Global<RandomComponent> {
-            return Self::instantiate_local(None)
+            Self::instantiate_local(None)
                 .prepare_to_globalize(OwnerRole::None)
-                .globalize();
+                .globalize()
         }
 
         /// Instantiate with Component address reservation - for unit tests
@@ -61,7 +63,9 @@ mod component {
                 .divisibility(DIVISIBILITY_NONE)
                 .metadata(metadata!(
                     init {
-                        "name" => "A badge presented during the callback execution.", locked;
+                        "name" => "Random Component Badge", locked;
+                        "symbol" => "RNG B", locked;
+                        "description" => "A badge presented during the callback execution", locked;
                     }
                 ));
 
@@ -72,6 +76,9 @@ mod component {
                 .mint_initial_supply(100)
                 .into();
             debug!("badge_addr:\n{:?}\n", badge.resource_address() );
+
+            let advances: Global<FeeAdvances> = Blueprint::<FeeAdvances>::instantiate(badge.resource_address());
+
             return Self {
                 vaults: KeyValueStore::new_with_registered_type(),
                 queue: KeyValueStore::new_with_registered_type(),
@@ -81,7 +88,8 @@ mod component {
                 id_seq: 0,
                 last_processed_id: 0,
 
-                black_list: KeyValueStore::new_with_registered_type(),
+                advances,
+                caller_royalties: KeyValueStore::new_with_registered_type(),
             }
                 .instantiate();
         }
@@ -91,10 +99,9 @@ mod component {
          * the Caller should also pass a badge that controls access to <method_name>().
          */
         pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge: FungibleBucket) -> u32 {
-            debug!("EXEC:RandomComponent::request_random()\n");
+            debug!("EXEC:RandomComponent::request_random()");
 
-            let option: Option<_> = self.black_list.get(&address);
-            assert!(option.is_none(), "Ignoring blacklisted component address: {:?}.", address);
+            self.charge_royalty(&address);
 
             let res: ResourceAddress = badge.resource_address();
             let amount: Decimal = badge.amount();
@@ -127,10 +134,9 @@ mod component {
          * the Caller should protect access to <method_name>() with a badge from [badge_vault].
          */
         pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32 {
-            debug!("EXEC:RandomComponent::request_random2()\n");
+            debug!("EXEC:RandomComponent::request_random2()");
 
-            let option: Option<_> = self.black_list.get(&address);
-            assert!(option.is_none(), "Ignoring blacklisted component address: {:?}.", address);
+            self.charge_royalty(&address);
 
             self.id_seq += 1;
             let callback_id: u32 = self.id_seq;
@@ -146,10 +152,10 @@ mod component {
          * TODO: Will be protected by badges.
          */
         pub fn process(&mut self, random_seed: Vec<u8>) {
-            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})\n", self.last_processed_id, self.id_seq, random_seed);
+            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.id_seq, random_seed);
 
             let end = self.last_processed_id + MAX_BATCH_SIZE;
-            while self.last_processed_id < self.id_seq && self.last_processed_id < end  {
+            while self.last_processed_id < self.id_seq && self.last_processed_id < end {
                 let id = self.last_processed_id + 1;
 
                 self.do_process(id, random_seed.clone());
@@ -189,6 +195,28 @@ mod component {
             }
         }
 
+        /// Evicts a faulty callback from the queue.
+        /// A callback is considered faulty when both <method_name> and <on_error> panic during the simulation.
+        pub fn evict(&mut self, callback_id: u32) {
+            self.queue.remove(&callback_id);
+        }
+
+        /// Updates the royalties for a specific component.
+        /// Called by the off-ledger service to maintain the royalties gained from `request_random()`
+        /// at a level matching the TX fees incurred when calling `process()`.
+        ///
+        pub fn update_caller_royalties(&mut self, address: ComponentAddress, royalty: u8) {
+            self.caller_royalties.insert(address, royalty);
+        }
+
+
+        fn charge_royalty(&mut self, address: &ComponentAddress) {
+            let option: Option<_> = self.caller_royalties.get(&address);
+            let level = if option.is_some() { *option.unwrap() } else { 12u8 } ;
+            let method = format!("dynamic_royalty_{}", level);
+            self.advances.call_ignore_rtn(method.as_str(), &());
+        }
+
         fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
@@ -211,28 +239,6 @@ mod component {
                     });
                 }
             }
-        }
-
-
-        /// Blacklists a caller component, preventing its callbacks from being registered.
-        /// A typical reason for blacklisting is improper Caller's Component implementation, e.g.:
-        /// - missing <method_name> on the Component
-        /// - missing <on_error>
-        /// - incompatible method signature(s)
-        /// The TX attempting to register a callback to such component will fail.
-        pub fn blacklist(&mut self, address: ComponentAddress) {
-            self.black_list.insert(address, true);
-        }
-
-        /// Remove an address from the blacklist
-        pub fn remove_blacklist(&mut self, address: ComponentAddress) {
-            self.black_list.remove(&address);
-        }
-
-        /// Evicts a faulty callback from the queue.
-        /// A callback is considered faulty when both <method_name> and <on_error> panic during the simulation.
-        pub fn evict(&mut self, callback_id: u32) {
-            self.queue.remove(&callback_id);
         }
     }
 }

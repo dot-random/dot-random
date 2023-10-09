@@ -26,7 +26,7 @@ mod caller_no_auth {
 
     impl ExampleCallerNoAuth {
         pub fn instantiate() -> Global<ExampleCallerNoAuth> {
-            debug!("EXEC:ExampleCallerNoAuth::instantiate()\n");
+            debug!("EXEC:ExampleCallerNoAuth::instantiate()");
 
             return Self {
                 next_id: 1,
@@ -39,7 +39,7 @@ mod caller_no_auth {
 
         /// Request random mint. Called by the User.
         pub fn request_mint(&mut self) -> u32 {
-            debug!("EXEC:ExampleCallerNoAuth::request_mint()\n");
+            debug!("EXEC:ExampleCallerNoAuth::request_mint()");
             /* 1. consume payment for mint here */
             /* ... */
 
@@ -61,7 +61,7 @@ mod caller_no_auth {
         /// Executed by our RandomWatcher off-ledger service (through [RandomComponent]).
         /// "nft_id" here is whatever was sent to RNG.request_random() above.
         pub fn do_mint(&mut self, nft_id: u32, random_seed: Vec<u8>) {
-            debug!("EXEC:ExampleCallerNoAuth::do_mint({:?}, {:?})\n", nft_id, random_seed);
+            debug!("EXEC:ExampleCallerNoAuth::do_mint({:?}, {:?})", nft_id, random_seed);
             // 2. seed the random
             let mut random: Random = Random::new(&random_seed);
             let random_traits = random.next_int::<u32>();
