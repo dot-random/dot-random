@@ -3,11 +3,18 @@ use crate::royalties::royalties::{FeeAdvances, FeeAdvancesFunctions};
 
 #[derive(ScryptoSbor)]
 pub struct Callback {
+    /// The caller component
     address: ComponentAddress,
+    /// also referred to as the `callback`.
     method_name: String,
+    /// executed when the callback panics.
     on_error: String,
+    /// resource to be sent back with the `callback` and `on_error`.
+    /// If missing - we will just show our own badge.
     resource: Option<ResourceAddress>,
+    /// The amount of the above resource.
     amount: Decimal,
+    /// The first argument of the `callback` and `on_error` methods.
     key: u32,
 }
 
@@ -17,16 +24,22 @@ const MAX_BATCH_SIZE: u32 = 10;
 #[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
 mod component {
     struct RandomComponent {
-        vaults: KeyValueStore<ResourceAddress, Vault>,
+        /// Enqueued callbacks to process.
         queue: KeyValueStore<u32, Callback>,
+        /// Holds the tokens that should be sent back to the Caller to auth the `callback` and `on_error`.
+        vaults: KeyValueStore<ResourceAddress, Vault>,
 
+        /// Holds our own badge that we also present when executing the `callback` and `on_error`.
         badge_vault: Vault,
 
         id_seq: u32,
         last_processed_id: u32,
 
-        caller_royalties: KeyValueStore<ComponentAddress, u8>,
+        /// The component that gathers royalties. Need a separate component to charge dynamic royalties,
+        /// based on the known average execution cost of the `callback` and `on_error` handlers.
         advances: Global<FeeAdvances>,
+        /// Royalties per known caller Component, cents. By default - 12 cents. Should be [1, 60].
+        caller_royalties: KeyValueStore<ComponentAddress, u8>,
     }
 
 
@@ -80,8 +93,8 @@ mod component {
             let advances: Global<FeeAdvances> = Blueprint::<FeeAdvances>::instantiate(badge.resource_address());
 
             return Self {
-                vaults: KeyValueStore::new_with_registered_type(),
                 queue: KeyValueStore::new_with_registered_type(),
+                vaults: KeyValueStore::new_with_registered_type(),
 
                 badge_vault: Vault::with_bucket(badge),
 
@@ -175,22 +188,24 @@ mod component {
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
                 let callback = queue_item.unwrap();
-                let resource_opt = callback.resource;
-                if let Some(resource) = resource_opt {
-                    if callback.amount.is_positive() {
-                        let opt = self.vaults.get_mut(&resource);
-                        if let Some(mut v) = opt {
-                            let bucket = v.take(callback.amount).as_fungible();
-                            let comp: Global<AnyComponent> = Global::from(callback.address);
-                            comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key, bucket));
+                if !callback.on_error.is_empty() {
+                    let resource_opt = callback.resource;
+                    if let Some(resource) = resource_opt {
+                        if callback.amount.is_positive() {
+                            let opt = self.vaults.get_mut(&resource);
+                            if let Some(mut v) = opt {
+                                let bucket = v.take(callback.amount).as_fungible();
+                                let comp: Global<AnyComponent> = Global::from(callback.address);
+                                comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key, bucket));
+                            }
                         }
+                    } else {
+                        let proof = self.badge_vault.as_fungible().create_proof_of_amount(Decimal::ONE);
+                        proof.authorize(|| {
+                            let comp: Global<AnyComponent> = Global::from(callback.address);
+                            comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key));
+                        });
                     }
-                } else {
-                    let proof = self.badge_vault.as_fungible().create_proof_of_amount(Decimal::ONE);
-                    proof.authorize(|| {
-                        let comp: Global<AnyComponent> = Global::from(callback.address);
-                        comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key));
-                    });
                 }
             }
         }

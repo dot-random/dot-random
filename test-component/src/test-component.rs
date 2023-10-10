@@ -161,22 +161,24 @@ mod component {
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
                 let callback = queue_item.unwrap();
-                let resource_opt = callback.resource;
-                if let Some(resource) = resource_opt {
-                    if callback.amount.is_positive() {
-                        let opt = self.vaults.get_mut(&resource);
-                        if let Some(mut v) = opt {
-                            let bucket = v.take(callback.amount).as_fungible();
-                            let comp: Global<AnyComponent> = Global::from(callback.address);
-                            comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key, bucket));
+                if !callback.on_error.is_empty() {
+                    let resource_opt = callback.resource;
+                    if let Some(resource) = resource_opt {
+                        if callback.amount.is_positive() {
+                            let opt = self.vaults.get_mut(&resource);
+                            if let Some(mut v) = opt {
+                                let bucket = v.take(callback.amount).as_fungible();
+                                let comp: Global<AnyComponent> = Global::from(callback.address);
+                                comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key, bucket));
+                            }
                         }
+                    } else {
+                        let proof = self.badge_vault.as_fungible().create_proof_of_amount(Decimal::ONE);
+                        proof.authorize(|| {
+                            let comp: Global<AnyComponent> = Global::from(callback.address);
+                            comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key));
+                        });
                     }
-                } else {
-                    let proof = self.badge_vault.as_fungible().create_proof_of_amount(Decimal::ONE);
-                    proof.authorize(|| {
-                        let comp: Global<AnyComponent> = Global::from(callback.address);
-                        comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key));
-                    });
                 }
             }
         }

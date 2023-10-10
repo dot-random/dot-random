@@ -47,7 +47,8 @@ fn test_request_random() {
     let commit = receipt.expect_commit_success();
 
     // Test actual request_random
-    let component = commit.new_component_addresses()[0];
+    let _fee_advances = commit.new_component_addresses()[0];
+    let component = commit.new_component_addresses()[1];
 
     let resource = test_runner.create_freely_mintable_fungible_resource(OwnerRole::None, Some(Decimal::ONE), DIVISIBILITY_NONE, account);
 
