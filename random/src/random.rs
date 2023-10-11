@@ -2,9 +2,10 @@ mod num;
 
 use crate::num::Num;
 
-pub struct Random<'a> {
-    seed: &'a [u8],
+pub struct Random {
+    seed: Vec<u8>,
     offset: u8,
+    rotations: u8,
 }
 
 
@@ -43,14 +44,55 @@ pub struct Random<'a> {
 ///    // B
 ///  }
 /// ```
-impl<'a> Random<'a> {
-    pub fn new(seed: &'a [u8]) -> Random<'a> {
-        Self { seed, offset: 0 }
+impl Random {
+    pub fn new(seed: &Vec<u8>) -> Random {
+        Self { seed: seed.clone(), offset: 0, rotations: 0 }
     }
 
-    #[inline]
     fn slice(&mut self, size: usize) -> &[u8] {
-        &self.seed[self.offset as usize..self.offset as usize + size]
+        let off = self.offset as usize;
+        let end = off + size;
+        if end <= self.seed.len() {
+            return &self.seed[off..end];
+        }
+
+        self.rotate();
+        return &self.seed[0..size];
+    }
+
+    // shifts the bits in the seed, so we can produce a new sequence of pseudorandom numbers.
+    fn rotate(&mut self) {
+        self.offset = 0;
+        self.rotations += 1;
+
+        let mut new_seed: Vec<u8> = Vec::with_capacity(self.seed.len());
+        // first, for each 4 byte tuple, apply Lehmer RNG to get a new 4 byte tuple
+        let mut i = 0;
+        while i < self.seed.len() {
+            let bytes = &self.seed[i..i+4];
+            let state = Num::from_bytes(bytes);
+            let new_state = Self::apply_lehmer_transition(state);
+            new_seed.extend(new_state.to_be_bytes()); // flip the bytes from LE to BE
+            i += 4;
+        }
+        self.seed = new_seed;
+
+        // then, rotate by a prime number
+        self.seed.rotate_right(11);
+    }
+
+    fn apply_lehmer_transition(state: u32) -> u32 {
+        if state == 0 {
+            // just a random prime number with at least 3 set bits in each byte
+            // and all bytes different: [173, 22, 100, 37]
+            return 627316397;
+        }
+
+        // We use Fermat number F5 instead of a prime because it conveniently just above u32 size,
+        // while also produces a cycle of at least 640 pseudo-random numbers.
+        // 2^32 + 1 = 641 x 6700417 = 4,294,967,297
+        let modulo: u64 = 0xffffffff + 1;
+        return ((state as u64) * 48271u64 % modulo) as u32;
     }
 
     pub fn next_bool(&mut self) -> bool {
@@ -72,10 +114,10 @@ impl<'a> Random<'a> {
 
     /// Returns a random number in range [min, max).
     pub fn in_range<T>(&mut self, min: T, max: T) -> T where T: Num {
-        if min < max {
-            return min + self.roll(max - min);
+        return if min < max {
+            min + self.roll(max - min)
         } else {
-            return min;
+            min
         };
     }
 
@@ -104,7 +146,14 @@ impl<'a> Random<'a> {
         }
     }
 
-    pub fn size(&mut self) -> u8 {
+    /* For unit tests */
+    pub fn size(&self) -> u8 {
         return self.seed.len() as u8 - self.offset;
+    }
+    pub fn rotations(&self) -> u8 {
+        return self.rotations;
+    }
+    pub fn seed(&self) -> &Vec<u8> {
+        return &self.seed;
     }
 }
