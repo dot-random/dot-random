@@ -45,7 +45,7 @@ pub struct Random<'a> {
 /// ```
 impl<'a> Random<'a> {
     pub fn new(seed: &'a [u8]) -> Random<'a> {
-        Self { seed, offset: 0u8 }
+        Self { seed, offset: 0 }
     }
 
     #[inline]
@@ -72,17 +72,36 @@ impl<'a> Random<'a> {
 
     /// Returns a random number in range [min, max).
     pub fn in_range<T>(&mut self, min: T, max: T) -> T where T: Num {
-        return if max > min {
-            min
+        if min < max {
+            return min + self.roll(max - min);
         } else {
-            min + self.roll(max - min + 1.into())
+            return min;
         };
     }
 
     /// Returns a random number in range [0, max).
     /// For example, `roll(3)` will return one of [0, 1, 2] with approximately equal probability.
     pub fn roll<T>(&mut self, max: T) -> T where T: Num {
-        return self.next_int::<T>() % max;
+        assert!(max != 0.into(), "Max should be positive!");
+
+        // no need to waste a random number on 1
+        if max == 1.into() {
+            return 0.into();
+        }
+
+        // special case for powers of 2
+        if (max & (max - 1.into())) == 0.into() {
+            return self.next_int::<T>() % max;
+        }
+
+        // general case - use only values inside the uniform distribution range
+        let max_uniform: T = T::MAX - (<T as Into<T>>::into(T::MAX) % max);
+        loop {
+            let num: T = self.next_int::<T>();
+            if num < max_uniform {
+                return num % max;
+            }
+        }
     }
 
     pub fn size(&mut self) -> u8 {
