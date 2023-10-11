@@ -5,6 +5,7 @@ use transaction::builder::ManifestBuilder;
 
 
 #[test]
+#[ignore]
 fn test_generate_royalties() {
     for i in 1..61 {
         println!("

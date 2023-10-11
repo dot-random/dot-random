@@ -18,7 +18,7 @@ pub struct Callback {
     key: u32,
 }
 
-const MAX_BATCH_SIZE: u32 = 10;
+const MAX_BATCH_SIZE: u32 = 16;
 
 #[blueprint]
 #[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
@@ -37,7 +37,7 @@ mod component {
 
         /// The component that gathers royalties. Need a separate component to charge dynamic royalties,
         /// based on the known average execution cost of the `callback` and `on_error` handlers.
-        advances: Global<FeeAdvances>,
+        royalty_address: ComponentAddress,
         /// Royalties per known caller Component, cents. By default - 12 cents. Should be [1, 60].
         caller_royalties: KeyValueStore<ComponentAddress, u8>,
     }
@@ -67,6 +67,17 @@ mod component {
         ) -> Global<RandomComponent> {
             Self::instantiate_local(Some(badge_address))
                 .prepare_to_globalize(OwnerRole::None)
+                .enable_component_royalties(component_royalties! {
+                    init {
+                        request_random => Usd(dec!(0.12)), locked;
+                        request_random2 => Usd(dec!(0.12)), locked;
+                        process => Free, locked;
+                        process_one => Free, locked;
+                        evict => Free, locked;
+                        handle_error => Free, locked;
+                        update_caller_royalties => Free, locked;
+                    }
+                })
                 .with_address(component_address)
                 .globalize()
         }
@@ -90,7 +101,7 @@ mod component {
                 .into();
             debug!("badge_addr:\n{:?}\n", badge.resource_address() );
 
-            let advances: Global<FeeAdvances> = Blueprint::<FeeAdvances>::instantiate(badge.resource_address());
+            let royalty_address: ComponentAddress = Blueprint::<FeeAdvances>::instantiate(badge.resource_address());
 
             return Self {
                 queue: KeyValueStore::new_with_registered_type(),
@@ -101,7 +112,7 @@ mod component {
                 id_seq: 0,
                 last_processed_id: 0,
 
-                advances,
+                royalty_address,
                 caller_royalties: KeyValueStore::new_with_registered_type(),
             }
                 .instantiate();
@@ -167,11 +178,17 @@ mod component {
         pub fn process(&mut self, random_seed: Vec<u8>) {
             debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.id_seq, random_seed);
 
+            let start = self.last_processed_id;
             let end = self.last_processed_id + MAX_BATCH_SIZE;
+            let mut seed = random_seed.clone();
             while self.last_processed_id < self.id_seq && self.last_processed_id < end {
+                if start != self.last_processed_id {
+                    seed.rotate_left(7);
+                };
+
                 let id = self.last_processed_id + 1;
 
-                self.do_process(id, random_seed.clone());
+                self.do_process(id, seed.clone());
                 self.last_processed_id = id;
             }
         }
@@ -221,15 +238,19 @@ mod component {
         /// at a level matching the TX fees incurred when calling `process()`.
         ///
         pub fn update_caller_royalties(&mut self, address: ComponentAddress, royalty: u8) {
+            assert!(royalty >= 0 && royalty < 11 && royalty != 9, "Incorrect Royalty level: {}", royalty);
             self.caller_royalties.insert(address, royalty);
         }
 
 
         fn charge_royalty(&mut self, address: &ComponentAddress) {
             let option: Option<_> = self.caller_royalties.get(&address);
-            let level = if option.is_some() { *option.unwrap() } else { 12u8 } ;
-            let method = format!("dynamic_royalty_{}", level);
-            self.advances.call_ignore_rtn(method.as_str(), &());
+            let level = if option.is_some() { *option.unwrap() } else { 0u8 } ;
+            if level > 0u8 {
+                let method = format!("dynamic_royalty_{}", level);
+                let comp: Global<AnyComponent> = Global::from(self.royalty_address);
+                comp.call_ignore_rtn(method.as_str(), &());
+            }
         }
 
         fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {

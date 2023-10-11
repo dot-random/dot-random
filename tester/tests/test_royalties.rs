@@ -62,7 +62,7 @@ fn some_royalties() {
     receipt.expect_commit_success();
 
     let royalties = receipt.fee_summary.total_royalty_cost_in_xrd;
-    common::assert_equal(dec!(0.5), royalties, "Total royalties should be 0.5 XRD");
+    common::assert_equal(dec!(3.5), royalties, "Total royalties should be 2+1.5 XRD");
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn update_royalties() {
             .call_method(
                 rc_component,
                 "update_caller_royalties",
-                manifest_args!(example_component, 30u8),
+                manifest_args!(example_component, 8u8),
             )
             .build(), vec![]);
     receipt.expect_commit_success();
@@ -107,6 +107,6 @@ fn update_royalties() {
     receipt.expect_commit_success();
 
     let royalties = receipt.fee_summary.total_royalty_cost_in_xrd;
-    common::assert_equal(dec!(5), royalties, "Total royalties should be 5 XRD");
+    common::assert_equal(dec!(9), royalties, "Total royalties should be 2+7 XRD");
 }
 
