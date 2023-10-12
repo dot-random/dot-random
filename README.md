@@ -27,7 +27,7 @@ Not deployed yet
 ```
 #### IDs on StokeNet:
 ```html
-package_tdx_2_1pkfavzgzkjqk8dunuyuuzkkewsy7n2w00hfms2ndmydf02eake86py
-component_tdx_2_1cpj7d0zu3rruked2k4lk4y4l523u46vns544kewheppmcysngzraws
-resource_tdx_2_1t4u529qgcyd439eldx9x6a93hpaw5f9wp8rkuqe3h88k4lyw3zq934
+package_tdx_2_1pk56nm7yuy3dcjx6awtj72ykx5grte0vukd0j8vl8algxnphwe8yz7
+component_tdx_2_1czgsfkdazhyhrs5238wh5phfk80ky8xzqvjwf7cpxwu76efl9jehcx
+resource_tdx_2_1t4hgu0a4tav5ydekqz3zd47r6w8kykcg9u4gsmrwnh5k8ef8uh625f
 ```
