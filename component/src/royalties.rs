@@ -9,7 +9,7 @@ mod royalties {
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(<FeeAdvances>::blueprint_id());
 
-            let comp = FeeAdvances {}
+            let _comp = FeeAdvances {}
                 .instantiate()
                 .prepare_to_globalize(
                     OwnerRole::Fixed(

@@ -1376,19 +1376,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-component"
-version = "0.1.0"
-dependencies = [
- "radix-engine",
- "sbor",
- "scrypto",
- "scrypto-test",
- "scrypto-unit",
- "test-component",
- "transaction",
-]
-
-[[package]]
 name = "test-utils"
 version = "0.1.0"
 dependencies = [

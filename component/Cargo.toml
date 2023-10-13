@@ -21,4 +21,5 @@ test = []
 
 [lib]
 crate-type = ["cdylib", "lib"]
+doctest = false
 path = "src/lib.rs"

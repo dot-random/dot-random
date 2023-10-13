@@ -69,7 +69,7 @@ mod caller_no_auth {
             self.nfts.insert(nft_id as u16, random_traits);
         }
 
-        pub fn abort_mint(&mut self, nft_id: u32) {
+        pub fn abort_mint(&mut self, _nft_id: u32) {
             // revert what you did in `request_mint()` here,
             // e.g. send the payment back to the user
         }

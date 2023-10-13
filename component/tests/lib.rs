@@ -5,23 +5,6 @@ use transaction::builder::ManifestBuilder;
 
 
 #[test]
-#[ignore]
-fn test_generate_royalties() {
-    for i in 1..61 {
-        println!("
-        pub fn dynamic_royalty_{}(&self) {{
-            debug!(\"EXEC:FeeAdvances::dynamic_royalty_{}()\");
-        }}", i, i);
-    }
-
-    println!();
-
-    for i in 1..61 {
-        println!("                        dynamic_royalty_{} => Usd(dec!(0.{})), locked;", i, format!("{:0>2}", i));
-    }
-}
-
-#[test]
 fn test_request_random() {
     // Set up environment.
     let mut test_runner = TestRunnerBuilder::new().build();
@@ -41,9 +24,11 @@ fn test_request_random() {
                 "instantiate",
                 manifest_args!(),
             )
+            .deposit_batch(account)
             .build(),
         vec![NonFungibleGlobalId::from_public_key(&public_key)],
     );
+
     println!("instantiate receipt:\n{:?}\n", receipt);
     let commit = receipt.expect_commit_success();
 
