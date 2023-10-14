@@ -2,7 +2,7 @@ use scrypto::prelude::*;
 use crate::royalties::royalties::{FeeAdvances, FeeAdvancesFunctions};
 
 #[derive(ScryptoSbor)]
-pub struct Callback {
+pub struct Caller {
     /// The caller component
     address: ComponentAddress,
     /// also referred to as the `callback`.
@@ -12,6 +12,14 @@ pub struct Callback {
     /// resource to be sent back with the `callback` and `on_error`.
     /// If missing - we will just show our own badge.
     resource: Option<ResourceAddress>,
+    /// Royalties level, as defined in `royalties.rs`. Should be [0-8, 10].
+    royalties_level: u8,
+}
+
+#[derive(ScryptoSbor)]
+pub struct Callback {
+    /// The id of the CallerComponent assigned during registration.
+    caller_id: u16,
     /// The amount of the above resource.
     amount: Decimal,
     /// The first argument of the `callback` and `on_error` methods.
@@ -21,7 +29,7 @@ pub struct Callback {
 const MAX_BATCH_SIZE: u32 = 16;
 
 #[blueprint]
-#[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
+#[types(u16, Caller, u32, Callback, ResourceAddress, Vault)]
 mod component {
     enable_method_auth! {
         roles {
@@ -29,8 +37,8 @@ mod component {
             watcher => updatable_by: [];
         },
         methods {
+            register_caller => PUBLIC;
             request_random => PUBLIC;
-            request_random2 => PUBLIC;
             process => restrict_to: [watcher];
             process_one => restrict_to: [watcher];
             evict => restrict_to: [watcher];
@@ -39,6 +47,8 @@ mod component {
         }
     }
     struct RandomComponent {
+        /// Registered Callers
+        callers: KeyValueStore<u16, Caller>,
         /// Enqueued callbacks to process.
         queue: KeyValueStore<u32, Callback>,
         /// Holds the tokens that should be sent back to the Caller to auth the `callback` and `on_error`.
@@ -47,14 +57,13 @@ mod component {
         /// Holds the badge that we present when executing the `callback` and `on_error`.
         component_badges: Vault,
 
-        id_seq: u32,
-        last_processed_id: u32,
+        caller_seq: u16,
+        callback_seq: u32,
+        last_processed_id: u32, // TODO: remove
 
         /// The component that gathers royalties. Need a separate component to charge dynamic royalties,
         /// based on the known average execution cost of the `callback` and `on_error` handlers.
         royalty_address: ComponentAddress,
-        /// Royalties Level per known caller Component, cents. Should be [0-8, 10].
-        caller_royalties: KeyValueStore<ComponentAddress, u8>,
     }
 
 
@@ -92,8 +101,8 @@ mod component {
                 ))
                 .enable_component_royalties(component_royalties! {
                     init {
+                        register_caller => Usd(dec!(1)), locked;
                         request_random => Usd(dec!(0.12)), locked;
-                        request_random2 => Usd(dec!(0.12)), locked;
                         process => Free, locked;
                         process_one => Free, locked;
                         evict => Free, locked;
@@ -123,16 +132,17 @@ mod component {
             let royalty_address: ComponentAddress = Blueprint::<FeeAdvances>::instantiate(comp_badge_addr);
 
             let comp: Owned<RandomComponent> = Self {
+                callers: KeyValueStore::new_with_registered_type(),
                 queue: KeyValueStore::new_with_registered_type(),
                 vaults: KeyValueStore::new_with_registered_type(),
 
                 component_badges: Vault::with_bucket(comp_badge),
 
-                id_seq: 0,
+                caller_seq: 0,
+                callback_seq: 0,
                 last_processed_id: 0,
 
                 royalty_address,
-                caller_royalties: KeyValueStore::new_with_registered_type(),
             }.instantiate();
             return (comp, owner_badge, watcher_badge);
         }
@@ -201,70 +211,87 @@ mod component {
                 .into();
         }
 
+        pub fn register_caller(&mut self, address: ComponentAddress, method_name: String, on_error: String,
+                               bucket_resource: Option<ResourceAddress>, royalties_level: u8) -> u16 {
+            debug!("EXEC:RandomComponent::register_caller({:?}, {:?}, {:?}, {:?}, {:?})",
+                address, method_name, on_error, bucket_resource, royalties_level);
+
+            self.caller_seq += 1;
+            let caller_id: u16 = self.caller_seq;
+            self.callers.insert(caller_id, Caller
+                {address, method_name, on_error, resource: bucket_resource, royalties_level}
+            );
+            return caller_id;
+        }
+
         /**
          * Called by any external Component.
          * the Caller should also pass a badge that controls access to <method_name>().
          */
-        pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge: FungibleBucket) -> u32 {
+        pub fn request_random(&mut self, caller_id: u16, key: u32, badge_opt: Option<FungibleBucket>) -> u32 {
             debug!("EXEC:RandomComponent::request_random()");
 
-            self.charge_royalty(&address);
+            let option: Option<_> = self.callers.get(&caller_id);
+            if option.is_some() {
+                let caller = option.unwrap();
+                let royalties_level = caller.royalties_level;
 
-            let res: ResourceAddress = badge.resource_address();
-            let amount: Decimal = badge.amount();
-            let vault;
-            {
-                let opt = self.vaults.get_mut(&res);
-                let bucket = badge.into();
-                if let Some(mut v) = opt {
-                    v.put(bucket);
-                    vault = None;
-                } else {
-                    vault = Some(Vault::with_bucket(bucket));
+                if royalties_level > 0u8 {
+                    let method = format!("dynamic_royalty_{}", royalties_level);
+                    let comp: Global<AnyComponent> = Global::from(self.royalty_address);
+                    comp.call_ignore_rtn(method.as_str(), &());
                 }
+
+                let mut amount = Decimal::ZERO;
+                if badge_opt.is_some() {
+                    let badge = badge_opt.unwrap();
+                    let res: ResourceAddress = badge.resource_address();
+                    amount = badge.amount();
+
+                    if caller.resource.is_none() {
+                        panic!("Sent a badge but no badge used in `register_caller()`")
+                    }
+                    if res != caller.resource.unwrap() {
+                        panic!("Sent badge differs from the one used in `register_caller()`")
+                    }
+
+                    let vault;
+                    {
+                        let opt = self.vaults.get_mut(&res);
+                        let bucket = badge.into();
+                        if let Some(mut v) = opt {
+                            v.put(bucket);
+                            vault = None;
+                        } else {
+                            vault = Some(Vault::with_bucket(bucket));
+                        }
+                    }
+
+                    if vault.is_some() {
+                        self.vaults.insert(res, vault.unwrap());
+                    }
+                }
+
+                self.callback_seq += 1;
+                let callback_id: u32 = self.callback_seq;
+                self.queue.insert(callback_id, Callback { caller_id, key, amount });
+                return callback_id;
             }
 
-            if vault.is_some() {
-                self.vaults.insert(res, vault.unwrap());
-            }
-
-            let resource = Some(res);
-
-            self.id_seq += 1;
-            let callback_id: u32 = self.id_seq;
-            self.queue.insert(callback_id, Callback { address, method_name, on_error, key, resource, amount });
-            return callback_id;
+            return 0;
         }
 
         /**
-         * Called by any external Component.
-         * the Caller should protect access to <method_name>() with a badge from [component_badges].
-         */
-        pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32 {
-            debug!("EXEC:RandomComponent::request_random2()");
-
-            self.charge_royalty(&address);
-
-            self.id_seq += 1;
-            let callback_id: u32 = self.id_seq;
-            let resource = None;
-            let amount = Decimal::ZERO;
-            self.queue.insert(callback_id, Callback { address, method_name, on_error, key, resource, amount });
-            return callback_id;
-        }
-
-        /**
-         * Will be called by the Random Watcher off-ledger service sometime in future.
-         * For now it's just a template.
-         * TODO: Will be protected by badges.
+         * Will be called by the Random Watcher off-ledger service sometime in the future.
+         * For now, it's just a template.
          */
         pub fn process(&mut self, random_seed: Vec<u8>) {
-            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.id_seq, random_seed);
+            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.callback_seq, random_seed);
 
             let start = self.last_processed_id;
             let end = self.last_processed_id + MAX_BATCH_SIZE;
             let mut seed = random_seed.clone();
-            while self.last_processed_id < self.id_seq && self.last_processed_id < end {
+            while self.last_processed_id < self.callback_seq && self.last_processed_id < end {
                 if start != self.last_processed_id {
                     seed.rotate_left(7);
                 };
@@ -288,23 +315,27 @@ mod component {
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
                 let callback = queue_item.unwrap();
-                if !callback.on_error.is_empty() {
-                    let resource_opt = callback.resource;
-                    if let Some(resource) = resource_opt {
-                        if callback.amount.is_positive() {
-                            let opt = self.vaults.get_mut(&resource);
-                            if let Some(mut v) = opt {
-                                let bucket = v.take(callback.amount).as_fungible();
-                                let comp: Global<AnyComponent> = Global::from(callback.address);
-                                comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key, bucket));
+                let caller_opt = self.callers.get(&callback.caller_id);
+                if caller_opt.is_some() {
+                    let caller = caller_opt.unwrap();
+                    if !caller.on_error.is_empty() {
+                        let resource_opt = caller.resource;
+                        if let Some(resource) = resource_opt {
+                            if callback.amount.is_positive() {
+                                let opt = self.vaults.get_mut(&resource);
+                                if let Some(mut v) = opt {
+                                    let bucket = v.take(callback.amount).as_fungible();
+                                    let comp: Global<AnyComponent> = Global::from(caller.address);
+                                    comp.call_ignore_rtn(caller.on_error.as_str(), &(callback.key, bucket));
+                                }
                             }
+                        } else {
+                            let proof = self.component_badges.as_fungible().create_proof_of_amount(Decimal::ONE);
+                            proof.authorize(|| {
+                                let comp: Global<AnyComponent> = Global::from(caller.address);
+                                comp.call_ignore_rtn(caller.on_error.as_str(), &(callback.key));
+                            });
                         }
-                    } else {
-                        let proof = self.component_badges.as_fungible().create_proof_of_amount(Decimal::ONE);
-                        proof.authorize(|| {
-                            let comp: Global<AnyComponent> = Global::from(callback.address);
-                            comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key));
-                        });
                     }
                 }
             }
@@ -320,43 +351,41 @@ mod component {
         /// Called by the off-ledger service to maintain the royalties gained from `request_random()`
         /// at a level matching the TX fees incurred when calling `process()`.
         ///
-        pub fn update_caller_royalties(&mut self, address: ComponentAddress, royalty: u8) {
+        pub fn update_caller_royalties(&mut self, caller_id: u16, royalty: u8) {
             assert!(royalty < 11 && royalty != 9, "Incorrect Royalty level: {}", royalty);
-            self.caller_royalties.insert(address, royalty);
-        }
-
-
-        fn charge_royalty(&mut self, address: &ComponentAddress) {
-            let option: Option<_> = self.caller_royalties.get(&address);
-            let level = if option.is_some() { *option.unwrap() } else { 0u8 };
-            if level > 0u8 {
-                let method = format!("dynamic_royalty_{}", level);
-                let comp: Global<AnyComponent> = Global::from(self.royalty_address);
-                comp.call_ignore_rtn(method.as_str(), &());
+            let option = self.callers.get_mut(&caller_id);
+            if option.is_some() {
+                option.unwrap().royalties_level = royalty;
             }
         }
+
 
         fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
                 let callback = queue_item.unwrap();
-                let resource_opt = callback.resource;
-                if let Some(resource) = resource_opt {
-                    if callback.amount.is_positive() {
-                        let opt = self.vaults.get_mut(&resource);
-                        if let Some(mut v) = opt {
-                            let bucket = v.take(callback.amount).as_fungible();
-                            let comp: Global<AnyComponent> = Global::from(callback.address);
-                            comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, bucket, random_seed));
+                let caller_opt = self.callers.get(&callback.caller_id);
+                if caller_opt.is_some() {
+                    let caller = caller_opt.unwrap();
+                    let resource_opt = caller.resource;
+                    if let Some(resource) = resource_opt {
+                        if callback.amount.is_positive() {
+                            let opt = self.vaults.get_mut(&resource);
+                            if let Some(mut v) = opt {
+                                let bucket = v.take(callback.amount).as_fungible();
+                                let comp: Global<AnyComponent> = Global::from(caller.address);
+                                comp.call_ignore_rtn(caller.method_name.as_str(), &(callback.key, bucket, random_seed));
+                            }
                         }
+                    } else {
+                        let proof = self.component_badges.as_fungible().create_proof_of_amount(Decimal::ONE);
+                        proof.authorize(|| {
+                            let comp: Global<AnyComponent> = Global::from(caller.address);
+                            comp.call_ignore_rtn(caller.method_name.as_str(), &(callback.key, random_seed));
+                        });
                     }
-                } else {
-                    let proof = self.component_badges.as_fungible().create_proof_of_amount(Decimal::ONE);
-                    proof.authorize(|| {
-                        let comp: Global<AnyComponent> = Global::from(callback.address);
-                        comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, random_seed));
-                    });
                 }
+
             }
         }
     }

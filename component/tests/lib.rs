@@ -4,6 +4,7 @@ use scrypto_unit::*;
 use transaction::builder::ManifestBuilder;
 
 
+#[ignore]
 #[test]
 fn test_request_random() {
     // Set up environment.

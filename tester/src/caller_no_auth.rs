@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+
 use random::Random;
 
 #[blueprint]
@@ -6,8 +7,10 @@ mod caller_no_auth {
     extern_blueprint!(
         // "package_tdx_2_1pk56nm7yuy3dcjx6awtj72ykx5grte0vukd0j8vl8algxnphwe8yz7",
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
-        MyRandom as RandomComponent {
-            fn request_random2(&self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32;
+        RandomComponent {
+            fn register_caller(&self, address: ComponentAddress, method_name: String, on_error: String,
+                               bucket_resource: Option<ResourceAddress>, royalties_level: u8) -> u16;
+            fn request_random(&self, caller_id: u16, key: u32, badge_opt: Option<FungibleBucket>) -> u32;
         }
     );
 
@@ -22,18 +25,38 @@ mod caller_no_auth {
         next_id: u16,
         // all traits (in this demo - just a raw random number) by id
         nfts: KeyValueStore<u16, u32>,
+        // Caller ID.
+        caller_id: u16,
     }
 
     impl ExampleCallerNoAuth {
         pub fn instantiate() -> Global<ExampleCallerNoAuth> {
             debug!("EXEC:ExampleCallerNoAuth::instantiate()");
 
+            // Prepare the address of your Component
+            let (address_reservation, component_address) =
+                Runtime::allocate_component_address(<ExampleCallerNoAuth>::blueprint_id());
+            // The method on your component to call back
+            let method_name: String = "do_mint".into();
+            // The method on yor component that will be called if do_mint() panics
+            let on_error: String = "abort_mint".into();
+            // The token that you are going to send in `request_random()`. None if you send None there.
+            let bucket_resource: Option<ResourceAddress> = None;
+            // Royalties level.
+            let royalties_level: u8 = 0;
+
+            // Register your Component and obtain a `caller_id`.
+            let caller_id = RNG.register_caller(component_address, method_name, on_error, bucket_resource, royalties_level);
+
             return Self {
                 next_id: 1,
                 nfts: KeyValueStore::new(),
+                // store the Caller ID. It doesn't change unless you upgrade to a new version of the RandomComponent (upgrade TBD).
+                caller_id
             }
                 .instantiate()
                 .prepare_to_globalize(OwnerRole::None)
+                .with_address(address_reservation)
                 .globalize();
         }
 
@@ -43,19 +66,13 @@ mod caller_no_auth {
             /* 1. consume payment for mint here */
             /* ... */
 
-            // 2. Request mint
+            // 2. Request Random
             let nft_id = self.next_id;
             self.next_id += 1;
-            // The address of your Component
-            let address = Runtime::global_component().address();
-            // The method on your component to call back
-            let method_name = "do_mint".into();
-            // The method on yor component that will be called if do_mint() panics
-            let on_error = "abort_mint".into();
             // A key that will be sent back to you with the callback
             let key = nft_id.into();
 
-            return RNG.request_random2(address, method_name, on_error, key);
+            return RNG.request_random(self.caller_id, key, None);
         }
 
         /// Executed by our RandomWatcher off-ledger service (through [RandomComponent]).

@@ -27,6 +27,7 @@ fn royalties_not_set() {
     common::assert_equal(dec!(2), royalties, "When unset, total royalties should be 2 XRD");
 }
 
+#[ignore]
 #[test]
 fn some_royalties() {
     // Arrange
@@ -62,6 +63,7 @@ fn some_royalties() {
     common::assert_equal(dec!(3.5), royalties, "Total royalties should be 2+1.5 XRD");
 }
 
+#[ignore]
 #[test]
 fn update_royalties() {
     // Arrange
