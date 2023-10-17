@@ -30,7 +30,6 @@ mod component {
         },
         methods {
             request_random => PUBLIC;
-            request_random2 => PUBLIC;
             process => restrict_to: [watcher];
             process_one => restrict_to: [watcher];
             evict => restrict_to: [watcher];
@@ -47,8 +46,8 @@ mod component {
         /// Holds the badge that we present when executing the `callback` and `on_error`.
         component_badges: Vault,
 
-        id_seq: u32,
-        last_processed_id: u32,
+        callback_seq: u32,
+        last_processed_id: u32, // TODO: remove
 
         /// The component that gathers royalties. Need a separate component to charge dynamic royalties,
         /// based on the known average execution cost of the `callback` and `on_error` handlers.
@@ -93,7 +92,6 @@ mod component {
                 .enable_component_royalties(component_royalties! {
                     init {
                         request_random => Usd(dec!(0.12)), locked;
-                        request_random2 => Usd(dec!(0.12)), locked;
                         process => Free, locked;
                         process_one => Free, locked;
                         evict => Free, locked;
@@ -128,7 +126,7 @@ mod component {
 
                 component_badges: Vault::with_bucket(comp_badge),
 
-                id_seq: 0,
+                callback_seq: 0,
                 last_processed_id: 0,
 
                 royalty_address,
@@ -205,66 +203,54 @@ mod component {
          * Called by any external Component.
          * the Caller should also pass a badge that controls access to <method_name>().
          */
-        pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge: FungibleBucket) -> u32 {
+        pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge_opt: Option<FungibleBucket>) -> u32 {
             debug!("EXEC:RandomComponent::request_random()");
 
             self.charge_royalty(&address);
 
-            let res: ResourceAddress = badge.resource_address();
-            let amount: Decimal = badge.amount();
-            let vault;
-            {
-                let opt = self.vaults.get_mut(&res);
-                let bucket = badge.into();
-                if let Some(mut v) = opt {
-                    v.put(bucket);
-                    vault = None;
-                } else {
-                    vault = Some(Vault::with_bucket(bucket));
+            let mut resource: Option<ResourceAddress> = None;
+            let mut amount = Decimal::ZERO;
+            if badge_opt.is_some() {
+                let badge = badge_opt.unwrap();
+                let res: ResourceAddress = badge.resource_address();
+                amount = badge.amount();
+
+                let vault;
+                {
+                    let opt = self.vaults.get_mut(&res);
+                    let bucket = badge.into();
+                    if let Some(mut v) = opt {
+                        v.put(bucket);
+                        vault = None;
+                    } else {
+                        vault = Some(Vault::with_bucket(bucket));
+                    }
                 }
+
+                if vault.is_some() {
+                    self.vaults.insert(res, vault.unwrap());
+                }
+
+                resource = Some(res);
             }
 
-            if vault.is_some() {
-                self.vaults.insert(res, vault.unwrap());
-            }
-
-            let resource = Some(res);
-
-            self.id_seq += 1;
-            let callback_id: u32 = self.id_seq;
+            self.callback_seq += 1;
+            let callback_id: u32 = self.callback_seq;
             self.queue.insert(callback_id, Callback { address, method_name, on_error, key, resource, amount });
             return callback_id;
         }
 
         /**
-         * Called by any external Component.
-         * the Caller should protect access to <method_name>() with a badge from [component_badges].
-         */
-        pub fn request_random2(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32 {
-            debug!("EXEC:RandomComponent::request_random2()");
-
-            self.charge_royalty(&address);
-
-            self.id_seq += 1;
-            let callback_id: u32 = self.id_seq;
-            let resource = None;
-            let amount = Decimal::ZERO;
-            self.queue.insert(callback_id, Callback { address, method_name, on_error, key, resource, amount });
-            return callback_id;
-        }
-
-        /**
-         * Will be called by the Random Watcher off-ledger service sometime in future.
-         * For now it's just a template.
-         * TODO: Will be protected by badges.
+         * Will be called by the Random Watcher off-ledger service sometime in the future.
+         * For now, it's just a template.
          */
         pub fn process(&mut self, random_seed: Vec<u8>) {
-            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.id_seq, random_seed);
+            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.callback_seq, random_seed);
 
             let start = self.last_processed_id;
             let end = self.last_processed_id + MAX_BATCH_SIZE;
             let mut seed = random_seed.clone();
-            while self.last_processed_id < self.id_seq && self.last_processed_id < end {
+            while self.last_processed_id < self.callback_seq && self.last_processed_id < end {
                 if start != self.last_processed_id {
                     seed.rotate_left(7);
                 };

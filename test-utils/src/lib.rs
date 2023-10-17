@@ -127,17 +127,18 @@ pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>(test_r
 
     let res = receipt.expect_commit_success();
     let rc_component = res.new_component_addresses()[0];
-    let owner_badge = res.new_resource_addresses()[0];
-    let component_badge = res.new_resource_addresses()[1];
+    // since we used AddressReservation, component badge addr got created first. Not the case for `instantiate()`.
+    let component_badge = res.new_resource_addresses()[0];
+    let owner_badge = res.new_resource_addresses()[1];
     let watcher_badge = res.new_resource_addresses()[2];
 
     let encoder = AddressBech32Encoder::for_simulator();
     let package_addr = encoder.encode(rc_package.as_ref());
     let component_addr = encoder.encode(rc_component.as_ref());
     let badge_addr = encoder.encode(component_badge.as_ref());
-    println!("RandomComponent:package_addr: {:?}\n", package_addr);
-    println!("RandomComponent:component_addr: {:?}\n", component_addr);
-    println!("RandomComponent:resource_addr: {:?}\n", badge_addr);
+    println!("RandomComponent:package_addr: {:?}", package_addr);
+    println!("RandomComponent:component_addr: {:?}", component_addr);
+    println!("RandomComponent:resource_addr: {:?}", badge_addr);
 
     return RandomTestUtil {
         package: rc_package,

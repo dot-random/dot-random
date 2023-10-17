@@ -7,7 +7,8 @@ mod caller_no_auth {
         // "package_tdx_2_1pk56nm7yuy3dcjx6awtj72ykx5grte0vukd0j8vl8algxnphwe8yz7",
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {
-            fn request_random2(&self, address: ComponentAddress, method_name: String, on_error: String, key: u32) -> u32;
+            fn request_random(&self, address: ComponentAddress, method_name: String, on_error: String,
+                key: u32, badge_opt: Option<FungibleBucket>) -> u32; //, expected_fee: u8
         }
     );
 
@@ -43,7 +44,7 @@ mod caller_no_auth {
             /* 1. consume payment for mint here */
             /* ... */
 
-            // 2. Request mint
+            // 2. Request Random
             let nft_id = self.next_id;
             self.next_id += 1;
             // The address of your Component
@@ -54,8 +55,14 @@ mod caller_no_auth {
             let on_error = "abort_mint".into();
             // A key that will be sent back to you with the callback
             let key = nft_id.into();
+            // The auth badge. Will be passed fully with the callback
+            let badge_opt: Option<FungibleBucket> = None;
+            // How much you would expect the callback to cost, cents (e.g. check on Stokenet).
+            // It helps to avoid a sharp increase in royalties during the first few invocations of `request_random()`
+            // but is completely optional.
+            let _expected_fee = 0u8;
 
-            return RNG.request_random2(address, method_name, on_error, key);
+            return RNG.request_random(address, method_name, on_error, key, badge_opt);
         }
 
         /// Executed by our RandomWatcher off-ledger service (through [RandomComponent]).
