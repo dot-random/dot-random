@@ -1008,6 +1008,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "royalties"
+version = "0.1.0"
+dependencies = [
+ "radix-engine",
+ "royalties",
+ "sbor",
+ "scrypto",
+ "scrypto-test",
+ "scrypto-unit",
+ "transaction",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

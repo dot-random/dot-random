@@ -1,5 +1,4 @@
 use scrypto::prelude::*;
-use crate::royalties::royalties::{FeeAdvances, FeeAdvancesFunctions};
 
 #[derive(ScryptoSbor)]
 pub struct Callback {
@@ -23,6 +22,44 @@ const MAX_BATCH_SIZE: u32 = 16;
 #[blueprint]
 #[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
 mod component {
+    extern_blueprint!(
+        "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgq0alh7ycnvjfe4t",
+        FeeAdvances {
+            fn r1(&self);
+            fn r2(&self);
+            fn r3(&self);
+            fn r4(&self);
+            fn r5(&self);
+            fn r6(&self);
+        }
+    );
+
+
+    // The components that gathers royalties. Need separate components to charge dynamic royalties,
+    // based on the known average execution cost of the `callback` and `on_error` handlers.
+    //
+
+    const C0: Global<FeeAdvances> = global_component!( FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqmnwdehjz0vev");
+    const C1: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqymnwdehr9lszd");
+    const C2: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqgmnwdehevxaxw");
+    const C3: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqvmnwdehgtkpa0");
+    const C4: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqsmnwdehy7a8wg");
+    const C5: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqq5mnwdeh4edm4f");
+    const C6: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqcmnwdeh0s5k32");
+    const C7: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqumnwdeh7hy22t");
+    const C8: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpqmnwdeh0a0a3x");
+    const C9: Global<FeeAdvances> = global_component!(FeeAdvances,
+                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpymnwdeh76lp28");
+
     enable_method_auth! {
         roles {
             admin => updatable_by: [];
@@ -49,9 +86,6 @@ mod component {
         callback_seq: u32,
         last_processed_id: u32, // TODO: remove
 
-        /// The component that gathers royalties. Need a separate component to charge dynamic royalties,
-        /// based on the known average execution cost of the `callback` and `on_error` handlers.
-        royalty_address: ComponentAddress,
         /// Royalties Level per known caller Component, cents. Should be [0-8, 10].
         caller_royalties: KeyValueStore<ComponentAddress, u8>,
     }
@@ -59,28 +93,32 @@ mod component {
 
     impl RandomComponent {
         /// Instantiate in Stokenet and Mainnet
-        pub fn instantiate() -> (Global<RandomComponent>, Bucket, Bucket) {
+        pub fn instantiate(owner_badge: ResourceAddress, watcher_badge: ResourceAddress) -> Global<RandomComponent> {
             return Self::globalize(
-                Self::instantiate_local(None),
+                Self::instantiate_local(owner_badge, None),
+                owner_badge,
+                watcher_badge,
                 None,
             );
         }
 
         /// Instantiate with Component and Badge address reservation - for unit tests
         pub fn instantiate_addr_badge(
+            owner_badge: ResourceAddress, watcher_badge: ResourceAddress,
             component_address: GlobalAddressReservation,
             component_badge_address: GlobalAddressReservation,
-        ) -> (Global<RandomComponent>, Bucket, Bucket) {
+        ) -> Global<RandomComponent> {
             return Self::globalize(
-                Self::instantiate_local(Some(component_badge_address)),
+                Self::instantiate_local(owner_badge, Some(component_badge_address)),
+                owner_badge, watcher_badge,
                 Some(component_address),
             );
         }
 
-        fn globalize((comp, owner_badge, watcher_badge): (Owned<RandomComponent>, Bucket, Bucket),
-                     component_addr: Option<GlobalAddressReservation>) -> (Global<RandomComponent>, Bucket, Bucket) {
-            let owner_resource: ResourceAddress = owner_badge.resource_address();
-            let watcher_resource: ResourceAddress = watcher_badge.resource_address();
+        fn globalize(comp: Owned<RandomComponent>,
+                     owner_resource: ResourceAddress,
+                     watcher_resource: ResourceAddress,
+                     component_addr: Option<GlobalAddressReservation>) -> Global<RandomComponent> {
             let mut globalizing = comp
                 .prepare_to_globalize(OwnerRole::Fixed(
                     rule!(require(owner_resource))
@@ -91,7 +129,7 @@ mod component {
                 ))
                 .enable_component_royalties(component_royalties! {
                     init {
-                        request_random => Usd(dec!(0.12)), locked;
+                        request_random => Usd(dec!(0.06)), locked;
                         process => Free, locked;
                         process_one => Free, locked;
                         evict => Free, locked;
@@ -102,23 +140,12 @@ mod component {
             if component_addr.is_some() {
                 globalizing = globalizing.with_address(component_addr.unwrap());
             }
-            let global = globalizing.globalize();
-            return (global, owner_badge, watcher_badge);
+            return globalizing.globalize();
         }
 
-        fn instantiate_local(comp_badge_address: Option<GlobalAddressReservation>) -> (Owned<RandomComponent>, Bucket, Bucket) {
-            let owner_badge = Self::create_owner_badge();
-            let owner_badge_addr = owner_badge.resource_address();
-            debug!("owner_badge:\n{:?}\n", owner_badge_addr);
-
-            let comp_badge = Self::create_component_badge(owner_badge_addr, comp_badge_address);
-            let comp_badge_addr = comp_badge.resource_address();
-            debug!("comp_badge:\n{:?}\n", comp_badge_addr);
-
-            let watcher_badge = Self::create_watcher_badge(owner_badge_addr);
-            debug!("watcher_badge:\n{:?}\n", watcher_badge.resource_address());
-
-            let royalty_address: ComponentAddress = Blueprint::<FeeAdvances>::instantiate(comp_badge_addr);
+        fn instantiate_local(owner_badge: ResourceAddress, comp_badge_address: Option<GlobalAddressReservation>) -> Owned<RandomComponent> {
+            let comp_badge = Self::create_component_badge(owner_badge, comp_badge_address);
+            debug!("comp_badge:\n{:?}\n", comp_badge.resource_address());
 
             let comp: Owned<RandomComponent> = Self {
                 queue: KeyValueStore::new_with_registered_type(),
@@ -129,26 +156,11 @@ mod component {
                 callback_seq: 0,
                 last_processed_id: 0,
 
-                royalty_address,
                 caller_royalties: KeyValueStore::new_with_registered_type(),
             }.instantiate();
-            return (comp, owner_badge, watcher_badge);
+            return comp;
         }
 
-        fn create_owner_badge() -> Bucket {
-            return ResourceBuilder::new_fungible(OwnerRole::None)
-                .divisibility(DIVISIBILITY_NONE)
-                .metadata(metadata!(
-                    init {
-                        "name" => "Random Component Owner", locked;
-                        "symbol" => "RCOWNER", locked;
-                        "description" => "A badge that allows managing the RandomComponent", locked;
-                        "tags" => vec!("badge", "rng", ".random", "Random-Component"), updatable;
-                    }
-                ))
-                .mint_initial_supply(10)
-                .into();
-        }
 
         fn create_component_badge(owner_badge_addr: ResourceAddress, badge_address: Option<GlobalAddressReservation>) -> Bucket {
             let mut builder = ResourceBuilder::new_fungible(
@@ -171,33 +183,6 @@ mod component {
                 .into();
         }
 
-        fn create_watcher_badge(owner_badge_addr: ResourceAddress) -> Bucket {
-            return ResourceBuilder::new_fungible(
-                OwnerRole::Fixed(rule!(require(owner_badge_addr))))
-                .mint_roles(mint_roles! {
-                    minter => rule!(require(owner_badge_addr));
-                    minter_updater => rule!(deny_all);
-                })
-                .burn_roles(burn_roles! {
-                    burner => rule!(require(owner_badge_addr));
-                    burner_updater => rule!(deny_all);
-                })
-                .recall_roles(recall_roles! {
-                    recaller => rule!(require(owner_badge_addr));
-                    recaller_updater => rule!(deny_all);
-                })
-                .divisibility(DIVISIBILITY_NONE)
-                .metadata(metadata!(
-                    init {
-                        "name" => "Random Component Watcher", locked;
-                        "symbol" => "RCWATCH", locked;
-                        "description" => "A badge that allows executing ", locked;
-                        "tags" => vec!("badge", "rng", ".random", "Random-Component", "bot"), updatable;
-                    }
-                ))
-                .mint_initial_supply(2)
-                .into();
-        }
 
         /**
          * Called by any external Component.
@@ -307,7 +292,7 @@ mod component {
         /// at a level matching the TX fees incurred when calling `process()`.
         ///
         pub fn update_caller_royalties(&mut self, address: ComponentAddress, royalty: u8) {
-            assert!(royalty < 11 && royalty != 9, "Incorrect Royalty level: {}", royalty);
+            assert!(royalty <= 60, "Incorrect Royalty level: {}", royalty);
             self.caller_royalties.insert(address, royalty);
         }
 
@@ -316,10 +301,39 @@ mod component {
             let option: Option<_> = self.caller_royalties.get(&address);
             let level = if option.is_some() { *option.unwrap() } else { 0u8 };
             if level > 0u8 {
-                let method = format!("dynamic_royalty_{}", level);
-                let comp: Global<AnyComponent> = Global::from(self.royalty_address);
-                comp.call_ignore_rtn(method.as_str(), &());
+                let component_idx = (level - 1) / 6u8;
+                let component = match component_idx {
+                    0 => { C0 }
+                    1 => { C1 }
+                    2 => { C2 }
+                    3 => { C3 }
+                    4 => { C4 }
+                    5 => { C5 }
+                    6 => { C6 }
+                    7 => { C7 }
+                    8 => { C8 }
+                    9 => { C9 }
+                    _ => { panic!("No FeeAdvance component with idx: {:?}", component_idx) }
+                };
+                let additional_fee = (level - 1) % 6u8 + 1;
+                match additional_fee {
+                    1 => { component.r1(); }
+                    2 => { component.r2(); }
+                    3 => { component.r3(); }
+                    4 => { component.r4(); }
+                    5 => { component.r5(); }
+                    6 => { component.r6(); }
+                    _ => { /* impossible */ }
+                };
+                // let method = format!("r{}", additional_fee);
+
+                // let x: Global<AnyComponent> = component.into();
+                // x.call_ignore_rtn(method.as_str(), &());
+                // let royalty_address: ComponentAddress = ComponentAddress::try_from_hex(component).unwrap();
+                // let comp: Global<AnyComponent> = Global::from(royalty_address);
+                // comp.call_ignore_rtn(method.as_str(), &());
             }
+
         }
 
         fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {

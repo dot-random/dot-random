@@ -24,7 +24,7 @@ fn royalties_not_set() {
     receipt.expect_commit_success();
 
     let royalties = receipt.fee_summary.total_royalty_cost_in_xrd;
-    common::assert_equal(dec!(2), royalties, "When unset, total royalties should be 2 XRD");
+    common::assert_equal(dec!(1), royalties, "When unset, total royalties should be 1 XRD");
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn some_royalties() {
     receipt.expect_commit_success();
 
     let royalties = receipt.fee_summary.total_royalty_cost_in_xrd;
-    common::assert_equal(dec!(3.5), royalties, "Total royalties should be 2+1.5 XRD");
+    common::assert_equal(dec!(1.5), royalties, "Total royalties should be 1+0.5 XRD");
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn update_royalties() {
             .call_method(
                 random_util.component,
                 "update_caller_royalties",
-                manifest_args!(example_component, 8u8),
+                manifest_args!(example_component, 9u8),
             )
             .build(), vec![NonFungibleGlobalId::from_public_key(&random_util.owner_pk)]);
     receipt.expect_commit_success();
@@ -106,6 +106,6 @@ fn update_royalties() {
     receipt.expect_commit_success();
 
     let royalties = receipt.fee_summary.total_royalty_cost_in_xrd;
-    common::assert_equal(dec!(9), royalties, "Total royalties should be 2+7 XRD");
+    common::assert_equal(dec!(2.5), royalties, "Total royalties should be 1+1.5 XRD");
 }
 

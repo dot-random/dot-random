@@ -1,3 +1,0 @@
-
-mod royalties;
-mod component;
