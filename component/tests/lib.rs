@@ -29,7 +29,7 @@ fn test_request_random() {
     let royalties_package = PackageAddress::new_or_panic(ROYAL_PACKAGE);
     test_runner.compile_and_publish_at_address(dir_royal, royalties_package);
 
-    // Instantiate the FeeAdvances.
+    // Instantiate the DynamicRoyalties.
     let mut manifest_reservations: Vec<ManifestAddressReservation> = Vec::new();
     let mut pre_allocated_addresses: Vec<PreAllocatedAddress> = Vec::new();
     for i in 0..10u8 {
@@ -37,7 +37,7 @@ fn test_request_random() {
         let mut addr = ROYAL_ADDRESS.clone();
         addr[addr.len() - 5] = i;
         pre_allocated_addresses.push((
-            BlueprintId::new(&royalties_package, "FeeAdvances"),
+            BlueprintId::new(&royalties_package, "DynamicRoyalties"),
             GlobalAddress::new_or_panic(addr),
         ).into());
     }

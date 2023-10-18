@@ -4,22 +4,8 @@ use radix_engine::transaction::{CommitResult, TransactionReceipt};
 use radix_engine::vm::NativeVmExtension;
 use scrypto_unit::*;
 use transaction::prelude::*;
-
-const ROYAL_PACKAGE: [u8; NodeId::LENGTH] = [
-    13, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 127, 127, 127, 19, 19,
-];
-const ROYAL_ADDRESS: [u8; NodeId::LENGTH] = [
-    192, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 55, 55, 55, 55,
-];
-const RANDOM_PACKAGE: [u8; NodeId::LENGTH] = [
-    13, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
-];
-const RANDOM_COMPONENT: [u8; NodeId::LENGTH] = [
-    192, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
-];
-const RANDOM_BADGE: [u8; NodeId::LENGTH] = [
-    93, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 0, 0, 0, 19, 19,
-];
+pub mod constants;
+use crate::constants::*;
 
 pub struct RandomTestUtil {
     pub package: PackageAddress,
@@ -116,12 +102,12 @@ pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>(test_r
         let mut addr = ROYAL_ADDRESS.clone();
         addr[addr.len() - 5] = i;
         pre_allocated_addresses.push((
-            BlueprintId::new(&ro_package, "FeeAdvances"),
+            BlueprintId::new(&ro_package, "DynamicRoyalties"),
             GlobalAddress::new_or_panic(addr),
         ).into());
     }
 
-    // Instantiate the FeeAdvances.
+    // Instantiate the DynamicRoyalties.
     let receipt = test_runner.execute_system_transaction_with_preallocated_addresses(
         vec![
             InstructionV1::CallFunction {
@@ -146,10 +132,10 @@ pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>(test_r
     let watcher_badge: ResourceAddress = commit.new_resource_addresses()[1];
 
     let package_addr = encoder.encode(ro_package.as_ref());
-    println!("FeeAdvances:package_addr: {:?}", package_addr);
+    println!("DynamicRoyalties:package_addr: {:?}", package_addr);
     for i in 0..commit.new_component_addresses().len() {
         let component_addr = encoder.encode(commit.new_component_addresses()[i].as_ref());
-        println!("FeeAdvances:component_addr: {:?}", component_addr);
+        println!("DynamicRoyalties:component_addr: {:?}", component_addr);
     }
 
     let rc_package = PackageAddress::new_or_panic(RANDOM_PACKAGE);

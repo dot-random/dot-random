@@ -1,10 +1,9 @@
 use scrypto::prelude::*;
-use crate::royalties::royalties::{FeeAdvances, FeeAdvancesFunctions};
+use crate::royalties::royalties::{DynamicRoyalties, DynamicRoyaltiesFunctions};
 
 #[blueprint]
 mod deploy_royalties {
-    struct Deployer {
-    }
+    struct Deployer {}
 
     impl Deployer {
         /// Instantiate in Stokenet and Mainnet
@@ -12,9 +11,9 @@ mod deploy_royalties {
             let mut addresses: Vec<GlobalAddressReservation> = Vec::new();
             for _ in 0..10 {
                 let (address_reservation, _) =
-                    Runtime::allocate_component_address(<FeeAdvances>::blueprint_id());
+                    Runtime::allocate_component_address(<DynamicRoyalties>::blueprint_id());
                 addresses.push(address_reservation);
-             }
+            }
 
             return Self::instantiate_with_addresses(addresses);
         }
@@ -23,23 +22,25 @@ mod deploy_royalties {
         pub fn instantiate_with_addresses(addresses: Vec<GlobalAddressReservation>) -> (Global<Deployer>, Bucket, Bucket) {
             let owner_badge = Self::create_owner_badge();
             let owner_badge_addr = owner_badge.resource_address();
-            debug!("owner_badge:\n{:?}\n", owner_badge_addr);
+            debug!("owner_badge: {:?}", owner_badge_addr);
 
             let watcher_badge = Self::create_watcher_badge(owner_badge_addr);
-            debug!("watcher_badge:\n{:?}\n", watcher_badge.resource_address());
+            debug!("watcher_badge: {:?}", watcher_badge.resource_address());
 
             let base_fees = vec!(
                 dec!(0), dec!(0.06), dec!(0.12), dec!(0.18), dec!(0.24), dec!(0.30), dec!(0.36), dec!(0.42), dec!(0.48), dec!(0.54)
             );
-            for i in 0..addresses.len() {
-                let base_fee = base_fees[i];
-                Blueprint::<FeeAdvances>::instantiate(addresses[i].clone(), owner_badge_addr, base_fee);
+
+            let mut i: usize = 0;
+            for address in addresses {
+                Blueprint::<DynamicRoyalties>::instantiate(address, owner_badge_addr, base_fees[i]);
+                i += 1;
             }
 
             return (
                 Self {}.instantiate().prepare_to_globalize(OwnerRole::None).globalize(),
                 owner_badge, watcher_badge
-                );
+            );
         }
 
         fn create_owner_badge() -> Bucket {
@@ -84,8 +85,5 @@ mod deploy_royalties {
                 .mint_initial_supply(2)
                 .into();
         }
-
     }
-
-
 }

@@ -24,7 +24,7 @@ const MAX_BATCH_SIZE: u32 = 16;
 mod component {
     extern_blueprint!(
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgq0alh7ycnvjfe4t",
-        FeeAdvances {
+        DynamicRoyalties {
             fn r1(&self);
             fn r2(&self);
             fn r3(&self);
@@ -38,26 +38,25 @@ mod component {
     // The components that gathers royalties. Need separate components to charge dynamic royalties,
     // based on the known average execution cost of the `callback` and `on_error` handlers.
     //
-
-    const C0: Global<FeeAdvances> = global_component!( FeeAdvances,
+    const C0: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqmnwdehjz0vev");
-    const C1: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C1: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqymnwdehr9lszd");
-    const C2: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C2: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqgmnwdehevxaxw");
-    const C3: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C3: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqvmnwdehgtkpa0");
-    const C4: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C4: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqsmnwdehy7a8wg");
-    const C5: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C5: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqq5mnwdeh4edm4f");
-    const C6: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C6: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqcmnwdeh0s5k32");
-    const C7: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C7: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqumnwdeh7hy22t");
-    const C8: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C8: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpqmnwdeh0a0a3x");
-    const C9: Global<FeeAdvances> = global_component!(FeeAdvances,
+    const C9: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
                     "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpymnwdeh76lp28");
 
     enable_method_auth! {
@@ -72,6 +71,8 @@ mod component {
             evict => restrict_to: [watcher];
             handle_error => restrict_to: [watcher];
             update_caller_royalties => restrict_to: [watcher];
+            withdraw => restrict_to: [admin];
+            withdraw_badges => restrict_to: [admin];
         }
     }
     struct RandomComponent {
@@ -81,10 +82,10 @@ mod component {
         vaults: KeyValueStore<ResourceAddress, Vault>,
 
         /// Holds the badge that we present when executing the `callback` and `on_error`.
-        component_badges: Vault,
+        badges: Vault,
 
         callback_seq: u32,
-        last_processed_id: u32, // TODO: remove
+        last_processed_id: u32,
 
         /// Royalties Level per known caller Component, cents. Should be [0-8, 10].
         caller_royalties: KeyValueStore<ComponentAddress, u8>,
@@ -135,6 +136,8 @@ mod component {
                         evict => Free, locked;
                         handle_error => Free, locked;
                         update_caller_royalties => Free, locked;
+                        withdraw => Free, locked;
+                        withdraw_badges => Free, locked;
                     }
                 });
             if component_addr.is_some() {
@@ -145,13 +148,13 @@ mod component {
 
         fn instantiate_local(owner_badge: ResourceAddress, comp_badge_address: Option<GlobalAddressReservation>) -> Owned<RandomComponent> {
             let comp_badge = Self::create_component_badge(owner_badge, comp_badge_address);
-            debug!("comp_badge:\n{:?}\n", comp_badge.resource_address());
+            debug!("comp_badge: {:?}", comp_badge.resource_address());
 
             let comp: Owned<RandomComponent> = Self {
                 queue: KeyValueStore::new_with_registered_type(),
                 vaults: KeyValueStore::new_with_registered_type(),
 
-                component_badges: Vault::with_bucket(comp_badge),
+                badges: Vault::with_bucket(comp_badge),
 
                 callback_seq: 0,
                 last_processed_id: 0,
@@ -189,7 +192,7 @@ mod component {
          * the Caller should also pass a badge that controls access to <method_name>().
          */
         pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge_opt: Option<FungibleBucket>) -> u32 {
-            debug!("EXEC:RandomComponent::request_random()");
+            debug!("EXEC:RandomComponent::request_random({:?}..{:?}, {:?}, {:?}, {:?})", address, method_name, on_error, key, badge_opt);
 
             self.charge_royalty(&address);
 
@@ -232,19 +235,19 @@ mod component {
         pub fn process(&mut self, random_seed: Vec<u8>) {
             debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.callback_seq, random_seed);
 
-            let start = self.last_processed_id;
-            let end = self.last_processed_id + MAX_BATCH_SIZE;
+            let mut id = self.last_processed_id;
+            let start = id;
+            let end = self.callback_seq.min(start + MAX_BATCH_SIZE);
             let mut seed = random_seed.clone();
-            while self.last_processed_id < self.callback_seq && self.last_processed_id < end {
-                if start != self.last_processed_id {
+            while id < end {
+                if id != start {
                     seed.rotate_left(7);
                 };
 
-                let id = self.last_processed_id + 1;
-
+                id += 1;
                 self.do_process(id, seed.clone());
-                self.last_processed_id = id;
             }
+            self.last_processed_id = id;
         }
 
         /**
@@ -253,6 +256,30 @@ mod component {
          */
         pub fn process_one(&mut self, callback_id: u32, random_seed: Vec<u8>) {
             self.do_process(callback_id, random_seed);
+        }
+
+        fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {
+            let queue_item: Option<Callback> = self.queue.remove(&callback_id);
+            if queue_item.is_some() {
+                let callback = queue_item.unwrap();
+                let resource_opt = callback.resource;
+                if let Some(resource) = resource_opt {
+                    if callback.amount.is_positive() {
+                        let opt = self.vaults.get_mut(&resource);
+                        if let Some(mut v) = opt {
+                            let bucket = v.take(callback.amount).as_fungible();
+                            let comp: Global<AnyComponent> = Global::from(callback.address);
+                            comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, bucket, random_seed));
+                        }
+                    }
+                } else {
+                    let proof = self.badges.as_fungible().create_proof_of_amount(Decimal::ONE);
+                    proof.authorize(|| {
+                        let comp: Global<AnyComponent> = Global::from(callback.address);
+                        comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, random_seed));
+                    });
+                }
+            }
         }
 
         pub fn handle_error(&mut self, callback_id: u32) {
@@ -271,7 +298,7 @@ mod component {
                             }
                         }
                     } else {
-                        let proof = self.component_badges.as_fungible().create_proof_of_amount(Decimal::ONE);
+                        let proof = self.badges.as_fungible().create_proof_of_amount(Decimal::ONE);
                         proof.authorize(|| {
                             let comp: Global<AnyComponent> = Global::from(callback.address);
                             comp.call_ignore_rtn(callback.on_error.as_str(), &(callback.key));
@@ -296,6 +323,13 @@ mod component {
             self.caller_royalties.insert(address, royalty);
         }
 
+        pub fn withdraw(&mut self, resource: ResourceAddress, amount: Decimal) -> Bucket {
+            let opt = self.vaults.get_mut(&resource);
+            return opt.unwrap().take(amount);
+        }
+        pub fn withdraw_badges(&mut self, amount: Decimal) -> Bucket {
+            return self.badges.take(amount);
+        }
 
         fn charge_royalty(&mut self, address: &ComponentAddress) {
             let option: Option<_> = self.caller_royalties.get(&address);
@@ -316,6 +350,7 @@ mod component {
                     _ => { panic!("No FeeAdvance component with idx: {:?}", component_idx) }
                 };
                 let additional_fee = (level - 1) % 6u8 + 1;
+                debug!("EXEC:RandomComponent::charge_royalty(C{:?}.r{:?}() [{:?} cents])", component_idx, additional_fee, level);
                 match additional_fee {
                     1 => { component.r1(); }
                     2 => { component.r2(); }
@@ -325,39 +360,11 @@ mod component {
                     6 => { component.r6(); }
                     _ => { /* impossible */ }
                 };
-                // let method = format!("r{}", additional_fee);
-
-                // let x: Global<AnyComponent> = component.into();
-                // x.call_ignore_rtn(method.as_str(), &());
-                // let royalty_address: ComponentAddress = ComponentAddress::try_from_hex(component).unwrap();
-                // let comp: Global<AnyComponent> = Global::from(royalty_address);
-                // comp.call_ignore_rtn(method.as_str(), &());
+            } else {
+                debug!("EXEC:RandomComponent::charge_royalty(SKIP)");
             }
 
         }
 
-        fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {
-            let queue_item: Option<Callback> = self.queue.remove(&callback_id);
-            if queue_item.is_some() {
-                let callback = queue_item.unwrap();
-                let resource_opt = callback.resource;
-                if let Some(resource) = resource_opt {
-                    if callback.amount.is_positive() {
-                        let opt = self.vaults.get_mut(&resource);
-                        if let Some(mut v) = opt {
-                            let bucket = v.take(callback.amount).as_fungible();
-                            let comp: Global<AnyComponent> = Global::from(callback.address);
-                            comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, bucket, random_seed));
-                        }
-                    }
-                } else {
-                    let proof = self.component_badges.as_fungible().create_proof_of_amount(Decimal::ONE);
-                    proof.authorize(|| {
-                        let comp: Global<AnyComponent> = Global::from(callback.address);
-                        comp.call_ignore_rtn(callback.method_name.as_str(), &(callback.key, random_seed));
-                    });
-                }
-            }
-        }
     }
 }

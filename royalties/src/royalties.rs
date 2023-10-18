@@ -2,12 +2,12 @@ use scrypto::prelude::*;
 
 #[blueprint]
 mod royalties {
-    struct FeeAdvances {}
+    struct DynamicRoyalties {}
 
-    impl FeeAdvances {
+    impl DynamicRoyalties {
         pub fn instantiate(address_reservation: GlobalAddressReservation,
                            owner_badge_address: ResourceAddress, base_fee: Decimal) {
-            let _comp = FeeAdvances {}
+            let _comp = DynamicRoyalties {}
                 .instantiate()
                 .prepare_to_globalize(
                     OwnerRole::Fixed(
