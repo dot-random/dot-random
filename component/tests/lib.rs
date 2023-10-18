@@ -98,7 +98,7 @@ fn test_request_random() {
                 builder.call_method(
                     component,
                     "request_random",
-                    (account, "test", "test_on_error", 123u32, Some(lookup.bucket("bucket1"))))
+                    (account, "test", "test_on_error", 123u32, Some(lookup.bucket("bucket1")), 0u8))
             })
 
             .build(),

@@ -12,11 +12,11 @@ See [examples](https://github.com/dot-random/examples).
 
 ##### Protecting your callback method.
 There are two ways to ensure that only RandomComponent can call your callback method:
-1. Use `request_random()`, which accepts a bucket, and pass it a token. The bucket will be passed back to you in the callback.  
+1. Pass a bucket with some token to `request_random()`. Then you can verify that the same bucket is returned back to you in the callback.  
 Effectively you grant access for each particular request.  
 See an example in [bucket_transfer_auth.rs](https://github.com/dot-random/examples/blob/master/bucket_transfer_auth/src/bucket_transfer_auth.rs).
 
-2. Use `request_random2()`,  which works without a bucket, but you are expected to protect your callback with `method_auth` and require our special badge.  
+2. When you chose not to use your own token, you are expected to protect your callback with `method_auth` and require our special badge.  
 See an example in  [badge_auth.rs](https://github.com/dot-random/examples/blob/master/badge_auth/src/badge_auth.rs).
 
 

@@ -24,7 +24,7 @@ fn royalties_not_set() {
     receipt.expect_commit_success();
 
     let royalties = receipt.fee_summary.total_royalty_cost_in_xrd;
-    common::assert_equal(dec!(1), royalties, "When unset, total royalties should be 1 XRD");
+    common::assert_equal(dec!(1), royalties, "When unset, total royalties should be 2 XRD");
 }
 
 #[test]
@@ -36,16 +36,7 @@ fn some_royalties() {
 
     // Act
     // 1. Set the royalties
-    let receipt = test_runner.execute_manifest_ignoring_fee(
-        ManifestBuilder::new()
-            .create_proof_from_account_of_amount(random_util.owner_account, random_util.watcher_badge, Decimal::ONE )
-            .call_method(
-                random_util.component,
-                "update_caller_royalties",
-                manifest_args!(example_component, 3u8),
-            )
-            .build(), vec![NonFungibleGlobalId::from_public_key(&random_util.owner_pk)]);
-    receipt.expect_commit_success();
+    random_util.update_royalties(&mut test_runner, example_component, 3u8);
 
     // 2. Request mint - should charge additional royalties
     let receipt = test_runner.execute_manifest_ignoring_fee(
@@ -66,33 +57,14 @@ fn some_royalties() {
 fn update_royalties() {
     // Arrange
     let mut test_runner = TestRunnerBuilder::new().build();
-
     let (random_util, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
     // 1. Set the royalties
-    let receipt = test_runner.execute_manifest_ignoring_fee(
-        ManifestBuilder::new()
-            .create_proof_from_account_of_amount(random_util.owner_account, random_util.watcher_badge, Decimal::ONE )
-            .call_method(
-                random_util.component,
-                "update_caller_royalties",
-                manifest_args!(example_component, 2u8),
-            )
-            .build(), vec![NonFungibleGlobalId::from_public_key(&random_util.owner_pk)]);
-    receipt.expect_commit_success();
+    random_util.update_royalties(&mut test_runner, example_component, 2u8);
 
     // 2. Update the royalties
-    let receipt = test_runner.execute_manifest_ignoring_fee(
-        ManifestBuilder::new()
-            .create_proof_from_account_of_amount(random_util.owner_account, random_util.watcher_badge, Decimal::ONE )
-            .call_method(
-                random_util.component,
-                "update_caller_royalties",
-                manifest_args!(example_component, 9u8),
-            )
-            .build(), vec![NonFungibleGlobalId::from_public_key(&random_util.owner_pk)]);
-    receipt.expect_commit_success();
+    random_util.update_royalties(&mut test_runner, example_component, 9u8);
 
     // 3. Request mint - should charge additional royalties
     let receipt = test_runner.execute_manifest_ignoring_fee(
@@ -109,3 +81,22 @@ fn update_royalties() {
     common::assert_equal(dec!(2.5), royalties, "Total royalties should be 1+1.5 XRD");
 }
 
+#[test]
+fn initial_royalties() {
+    // Arrange
+    let mut test_runner = TestRunnerBuilder::new().build();
+    let (random_util, example_component) = common::deploy_component_and_caller(&mut test_runner);
+    let receipt = test_runner.execute_manifest_ignoring_fee(
+        ManifestBuilder::new()
+            .call_method(
+                random_util.component,
+                "request_random",
+                manifest_args!(example_component, "test", "test_on_error", 123u32, None::<u8>, 21u8),
+            )
+            .build(), vec![]);
+
+    receipt.expect_commit_success();
+
+    let royalties = receipt.fee_summary.total_royalty_cost_in_xrd;
+    common::assert_equal(dec!(4.5), royalties, "Total royalties should be 1+3.5 XRD");
+}

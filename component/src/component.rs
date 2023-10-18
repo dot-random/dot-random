@@ -68,9 +68,9 @@ mod component {
             request_random => PUBLIC;
             process => restrict_to: [watcher];
             process_one => restrict_to: [watcher];
-            evict => restrict_to: [watcher];
             handle_error => restrict_to: [watcher];
-            update_caller_royalties => restrict_to: [watcher];
+            evict => restrict_to: [watcher];
+            update_caller_royalties => restrict_to: [watcher, admin];
             withdraw => restrict_to: [admin];
             withdraw_badges => restrict_to: [admin];
         }
@@ -133,8 +133,8 @@ mod component {
                         request_random => Usd(dec!(0.06)), locked;
                         process => Free, locked;
                         process_one => Free, locked;
-                        evict => Free, locked;
                         handle_error => Free, locked;
+                        evict => Free, locked;
                         update_caller_royalties => Free, locked;
                         withdraw => Free, locked;
                         withdraw_badges => Free, locked;
@@ -191,10 +191,11 @@ mod component {
          * Called by any external Component.
          * the Caller should also pass a badge that controls access to <method_name>().
          */
-        pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String, key: u32, badge_opt: Option<FungibleBucket>) -> u32 {
-            debug!("EXEC:RandomComponent::request_random({:?}..{:?}, {:?}, {:?}, {:?})", address, method_name, on_error, key, badge_opt);
+        pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String,
+                              key: u32, badge_opt: Option<FungibleBucket>, expected_fee: u8) -> u32 {
+            debug!("EXEC:RandomComponent::request_random({:?}..{:?}, {:?}, {:?}, {:?}, {:?})", address, method_name, on_error, key, badge_opt, expected_fee);
 
-            self.charge_royalty(&address);
+            self.charge_royalty(&address, expected_fee);
 
             let mut resource: Option<ResourceAddress> = None;
             let mut amount = Decimal::ZERO;
@@ -323,17 +324,26 @@ mod component {
             self.caller_royalties.insert(address, royalty);
         }
 
+        /// Withdraw the assets, e.g. when both callback and error hadnler failed, and we had to evict it.
         pub fn withdraw(&mut self, resource: ResourceAddress, amount: Decimal) -> Bucket {
             let opt = self.vaults.get_mut(&resource);
             return opt.unwrap().take(amount);
         }
+
+        /// Withdraw badges, e.g. to migrate to a new version of the component
         pub fn withdraw_badges(&mut self, amount: Decimal) -> Bucket {
             return self.badges.take(amount);
         }
 
-        fn charge_royalty(&mut self, address: &ComponentAddress) {
+        fn charge_royalty(&mut self, address: &ComponentAddress, expected_fee: u8) {
             let option: Option<_> = self.caller_royalties.get(&address);
-            let level = if option.is_some() { *option.unwrap() } else { 0u8 };
+            let level = if option.is_some() {
+                *option.unwrap()
+            } else if expected_fee <= 60 {
+                expected_fee
+            } else {
+                6u8 // 1 XRD by default
+            };
             if level > 0u8 {
                 let component_idx = (level - 1) / 6u8;
                 let component = match component_idx {

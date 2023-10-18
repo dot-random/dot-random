@@ -7,7 +7,8 @@ use transaction::prelude::*;
 
 use test_utils::{random_component_deploy_dir, RandomTestUtil};
 
-pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InMemorySubstateDatabase>) -> (RandomTestUtil, ComponentAddress) {
+pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InMemorySubstateDatabase>)
+        -> (RandomTestUtil<NoExtension, InMemorySubstateDatabase>, ComponentAddress) {
     // dir is different in Debug mode
     let root_dir = env::current_dir().ok().unwrap().ends_with("dot-random");
     let dir_royal = if root_dir { "./royalties" } else { "../royalties" };
@@ -22,7 +23,8 @@ pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InM
     return (env, example_component);
 }
 
-pub fn deploy_caller_no_auth(test_runner: &mut TestRunner<NoExtension, InMemorySubstateDatabase>, dir_example: &str) -> ComponentAddress {
+pub fn deploy_caller_no_auth(test_runner: &mut TestRunner<NoExtension, InMemorySubstateDatabase>,
+                             dir_example: &str) -> ComponentAddress {
     let package_address2 = test_runner.publish_retain_blueprints(
         dir_example,
         |blueprint, _| blueprint.eq("ExampleCallerNoAuth"),

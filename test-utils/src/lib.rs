@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt};
@@ -7,7 +8,8 @@ use transaction::prelude::*;
 pub mod constants;
 use crate::constants::*;
 
-pub struct RandomTestUtil {
+
+pub struct RandomTestUtil<E: NativeVmExtension, D: TestDatabase> {
     pub package: PackageAddress,
     pub component: ComponentAddress,
     pub badge: ResourceAddress,
@@ -16,23 +18,23 @@ pub struct RandomTestUtil {
     pub owner_account: ComponentAddress,
     pub owner_pk: Secp256k1PublicKey,
     pub watcher_badge: ResourceAddress,
+
+    phantom: PhantomData<E>,
+    phantom2: PhantomData<D>,
 }
 
-impl RandomTestUtil {
-    pub fn process<E: NativeVmExtension, D: TestDatabase>(&self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> CommitResult {
-        let receipt = self.try_process(test_runner, self.component, random_bytes);
-        let result = receipt.expect_commit_success();
-        result.outcome.expect_success();
-        return result.clone();
+impl<E: NativeVmExtension, D: TestDatabase> RandomTestUtil<E, D> {
+    pub fn process(&self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> CommitResult {
+        let receipt = self.try_process(test_runner, random_bytes);
+        return receipt.expect_commit_success().clone();
     }
 
-    pub fn try_process<E: NativeVmExtension, D: TestDatabase>(&self, test_runner: &mut TestRunner<E, D>,
-                                                                               rc_component: ComponentAddress, random_bytes: Vec<u8>) -> TransactionReceipt {
+    pub fn try_process(&self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> TransactionReceipt {
         let receipt = test_runner.execute_manifest_ignoring_fee(
             ManifestBuilder::new()
-                .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE )
+                .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE)
                 .call_method(
-                    rc_component,
+                    self.component,
                     "process",
                     manifest_args!(random_bytes),
                 )
@@ -40,20 +42,17 @@ impl RandomTestUtil {
         return receipt;
     }
 
-    pub fn process_one<E: NativeVmExtension, D: TestDatabase>(&self, test_runner: &mut TestRunner<E, D>,
-                                                                               rc_component: ComponentAddress, callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
-        let receipt = self.try_process_one(test_runner, rc_component, callback_id, random_bytes);
-        let result = receipt.expect_commit_success();
-        result.outcome.expect_success();
-        return result.clone();
+    pub fn process_one(&self, test_runner: &mut TestRunner<E, D>,
+                       callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
+        let receipt = self.try_process_one(test_runner, callback_id, random_bytes);
+        return receipt.expect_commit_success().clone();
     }
 
-    pub fn try_process_one<E: NativeVmExtension, D: TestDatabase>(&self, test_runner: &mut TestRunner<E, D>,
-                                                                                   rc_component: ComponentAddress, callback_id: u32, random_bytes: Vec<u8>) -> TransactionReceipt {
+    pub fn try_process_one(&self, test_runner: &mut TestRunner<E, D>, callback_id: u32, random_bytes: Vec<u8>) -> TransactionReceipt {
         let receipt = test_runner.execute_manifest_ignoring_fee(
             ManifestBuilder::new()
                 .call_method(
-                    rc_component,
+                    self.component,
                     "process_one",
                     manifest_args!(callback_id, random_bytes),
                 )
@@ -61,12 +60,11 @@ impl RandomTestUtil {
         return receipt;
     }
 
-    pub fn handle_error<E: NativeVmExtension, D: TestDatabase>(&self, test_runner: &mut TestRunner<E, D>,
-                                                                                rc_component: ComponentAddress, callback_id: u32) -> CommitResult {
+    pub fn handle_error(&self, test_runner: &mut TestRunner<E, D>, callback_id: u32) -> CommitResult {
         let receipt = test_runner.execute_manifest_ignoring_fee(
             ManifestBuilder::new()
                 .call_method(
-                    rc_component,
+                    self.component,
                     "handle_error",
                     manifest_args!(callback_id),
                 )
@@ -75,10 +73,28 @@ impl RandomTestUtil {
         result.outcome.expect_success();
         return result.clone();
     }
+
+    pub fn update_royalties(&self, test_runner: &mut TestRunner<E, D>, caller_component: ComponentAddress, royalty_level: u8) -> CommitResult {
+        let receipt = self.try_update_royalties(test_runner, caller_component, royalty_level);
+        return receipt.expect_commit_success().clone();
+    }
+
+    pub fn try_update_royalties(&self, test_runner: &mut TestRunner<E, D>, caller_component: ComponentAddress, royalty_level: u8) -> TransactionReceipt {
+        let receipt = test_runner.execute_manifest_ignoring_fee(
+            ManifestBuilder::new()
+                .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE )
+                .call_method(
+                    self.component,
+                    "update_caller_royalties",
+                    manifest_args!(caller_component, royalty_level),
+                )
+                .build(), vec![NonFungibleGlobalId::from_public_key(&self.owner_pk)]);
+        return receipt;
+    }
 }
 
-pub fn random_component_deploy<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>, commit_hash: &str)
-                                                                      -> RandomTestUtil {
+pub fn random_component_deploy<E: NativeVmExtension, D: TestDatabase>
+(test_runner: &mut TestRunner<E, D>, commit_hash: &str) -> RandomTestUtil<E, D> {
     let royalties_path = get_component_dir("dot-random", commit_hash, "royalties");
     let dir_royalties = royalties_path.to_str().unwrap();
     let component_path = get_component_dir("dot-random", commit_hash, "component");
@@ -87,8 +103,8 @@ pub fn random_component_deploy<E: NativeVmExtension, D: TestDatabase>(test_runne
     return random_component_deploy_dir(test_runner, dir_royalties, dir_component);
 }
 
-pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>(test_runner: &mut TestRunner<E, D>, dir_royalties: &str, dir_component: &str)
-                                                                                 -> RandomTestUtil {
+pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>
+(test_runner: &mut TestRunner<E, D>, dir_royalties: &str, dir_component: &str) -> RandomTestUtil<E, D> {
     let encoder = AddressBech32Encoder::for_simulator();
     let (public_key, _, owner_account) = test_runner.new_allocated_account();
 
@@ -188,7 +204,10 @@ pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>(test_r
         owner_badge,
         owner_account,
         owner_pk: public_key,
-        watcher_badge
+        watcher_badge,
+
+        phantom: PhantomData,
+        phantom2: PhantomData,
     };
 }
 
