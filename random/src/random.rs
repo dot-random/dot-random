@@ -45,6 +45,7 @@ pub struct Random {
 ///  }
 /// ```
 impl Random {
+    /// seed length must be a multiple of 4.
     pub fn new(seed: &Vec<u8>) -> Random {
         Self { seed: seed.clone(), offset: 0, rotations: 0 }
     }
@@ -65,11 +66,12 @@ impl Random {
         self.offset = 0;
         self.rotations += 1;
 
-        let mut new_seed: Vec<u8> = Vec::with_capacity(self.seed.len());
+        let len = self.seed.len();
+        let mut new_seed: Vec<u8> = Vec::with_capacity(len);
         // first, for each 4 byte tuple, apply Lehmer RNG to get a new 4 byte tuple
         let mut i = 0;
-        while i < self.seed.len() {
-            let bytes = &self.seed[i..i+4];
+        while i < len {
+            let bytes = &self.seed[i..i + 4];
             let state = Num::from_bytes(bytes);
             let new_state = Self::apply_lehmer_transition(state);
             new_seed.extend(new_state.to_be_bytes()); // flip the bytes from LE to BE
@@ -78,7 +80,8 @@ impl Random {
         self.seed = new_seed;
 
         // then, rotate by a prime number
-        self.seed.rotate_right(11);
+        let k = if len == 4 { 3 } else if len == 8 { 5 } else { 11 };
+        self.seed.rotate_right(k);
     }
 
     fn apply_lehmer_transition(state: u32) -> u32 {

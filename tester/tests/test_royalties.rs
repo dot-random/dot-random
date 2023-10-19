@@ -9,7 +9,7 @@ fn royalties_not_set() {
     // Arrange
     let mut test_runner = TestRunnerBuilder::new().build();
 
-    let (_random_util, example_component) = common::deploy_component_and_caller(&mut test_runner);
+    let (_random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
     // 1. Request mint - should return callback id: 1
@@ -32,11 +32,11 @@ fn some_royalties() {
     // Arrange
     let mut test_runner = TestRunnerBuilder::new().build();
 
-    let (random_util, example_component) = common::deploy_component_and_caller(&mut test_runner);
+    let (random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
     // 1. Set the royalties
-    random_util.update_royalties(&mut test_runner, example_component, 3u8);
+    random_env.update_royalties(&mut test_runner, example_component, 3u8);
 
     // 2. Request mint - should charge additional royalties
     let receipt = test_runner.execute_manifest_ignoring_fee(
@@ -57,14 +57,14 @@ fn some_royalties() {
 fn update_royalties() {
     // Arrange
     let mut test_runner = TestRunnerBuilder::new().build();
-    let (random_util, example_component) = common::deploy_component_and_caller(&mut test_runner);
+    let (random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
     // 1. Set the royalties
-    random_util.update_royalties(&mut test_runner, example_component, 2u8);
+    random_env.update_royalties(&mut test_runner, example_component, 2u8);
 
     // 2. Update the royalties
-    random_util.update_royalties(&mut test_runner, example_component, 9u8);
+    random_env.update_royalties(&mut test_runner, example_component, 9u8);
 
     // 3. Request mint - should charge additional royalties
     let receipt = test_runner.execute_manifest_ignoring_fee(
@@ -85,11 +85,11 @@ fn update_royalties() {
 fn initial_royalties() {
     // Arrange
     let mut test_runner = TestRunnerBuilder::new().build();
-    let (random_util, example_component) = common::deploy_component_and_caller(&mut test_runner);
+    let (random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
     let receipt = test_runner.execute_manifest_ignoring_fee(
         ManifestBuilder::new()
             .call_method(
-                random_util.component,
+                random_env.component,
                 "request_random",
                 manifest_args!(example_component, "test", "test_on_error", 123u32, None::<u8>, 21u8),
             )

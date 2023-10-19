@@ -5,6 +5,7 @@ version = "0.1.0"
 
 
 [dependencies]
+random = { path = "../random" }
 sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }

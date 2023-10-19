@@ -1,15 +1,16 @@
 use std::marker::PhantomData;
-use std::path::PathBuf;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt};
 use radix_engine::vm::NativeVmExtension;
 use scrypto_unit::*;
 use transaction::prelude::*;
+pub mod cargo;
+use crate::cargo::*;
 pub mod constants;
 use crate::constants::*;
 
 
-pub struct RandomTestUtil<E: NativeVmExtension, D: TestDatabase> {
+pub struct RandomTestEnv<E: NativeVmExtension, D: TestDatabase> {
     pub package: PackageAddress,
     pub component: ComponentAddress,
     pub badge: ResourceAddress,
@@ -23,8 +24,15 @@ pub struct RandomTestUtil<E: NativeVmExtension, D: TestDatabase> {
     phantom2: PhantomData<D>,
 }
 
-impl<E: NativeVmExtension, D: TestDatabase> RandomTestUtil<E, D> {
+impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
+
     pub fn process(&self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> CommitResult {
+        let receipt = self.try_process(test_runner, random_bytes);
+        return receipt.expect_commit_success().clone();
+    }
+
+    pub fn process_num(&self, test_runner: &mut TestRunner<E, D>, num: u32) -> CommitResult {
+        let random_bytes: Vec<u8> = Self::deterministic_bytes_from_number(num);
         let receipt = self.try_process(test_runner, random_bytes);
         return receipt.expect_commit_success().clone();
     }
@@ -91,20 +99,28 @@ impl<E: NativeVmExtension, D: TestDatabase> RandomTestUtil<E, D> {
                 .build(), vec![NonFungibleGlobalId::from_public_key(&self.owner_pk)]);
         return receipt;
     }
+
+    fn deterministic_bytes_from_number(a_number: u32) -> Vec<u8> {
+        let seed = hash(a_number.to_be_bytes());
+        let random_bytes = seed.to_vec();
+
+        println!("RandomTestEnv:random_bytes: {:?}", random_bytes);
+        return random_bytes;
+    }
 }
 
-pub fn random_component_deploy<E: NativeVmExtension, D: TestDatabase>
-(test_runner: &mut TestRunner<E, D>, commit_hash: &str) -> RandomTestUtil<E, D> {
-    let royalties_path = get_component_dir("dot-random", commit_hash, "royalties");
+pub fn deploy_random_component<E: NativeVmExtension, D: TestDatabase>
+(test_runner: &mut TestRunner<E, D>, commit_hash: &str) -> RandomTestEnv<E, D> {
+    let royalties_path = get_repo_sub_dir("dot-random", commit_hash, "royalties");
     let dir_royalties = royalties_path.to_str().unwrap();
-    let component_path = get_component_dir("dot-random", commit_hash, "component");
+    let component_path = get_repo_sub_dir("dot-random", commit_hash, "component");
     let dir_component = component_path.to_str().unwrap();
 
-    return random_component_deploy_dir(test_runner, dir_royalties, dir_component);
+    return deploy_random_component_from_dir(test_runner, dir_royalties, dir_component);
 }
 
-pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>
-(test_runner: &mut TestRunner<E, D>, dir_royalties: &str, dir_component: &str) -> RandomTestUtil<E, D> {
+pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
+(test_runner: &mut TestRunner<E, D>, dir_royalties: &str, dir_component: &str) -> RandomTestEnv<E, D> {
     let encoder = AddressBech32Encoder::for_simulator();
     let (public_key, _, owner_account) = test_runner.new_allocated_account();
 
@@ -196,7 +212,7 @@ pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>
     println!("RandomComponent:component_addr: {:?}", component_addr);
     println!("RandomComponent:resource_addr: {:?}", badge_addr);
 
-    return RandomTestUtil {
+    return RandomTestEnv {
         package: rc_package,
         component: rc_component,
         badge: component_badge,
@@ -209,32 +225,4 @@ pub fn random_component_deploy_dir<E: NativeVmExtension, D: TestDatabase>
         phantom: PhantomData,
         phantom2: PhantomData,
     };
-}
-
-fn add_dir(p: PathBuf, dir: &str) -> PathBuf {
-    let mut p = p.into_os_string();
-    p.push("/");
-    p.push(dir);
-    return p.into();
-}
-
-pub fn get_dependency_dir(repo_name: &str, commit_hash: &str) -> Option<PathBuf> {
-    assert_eq!(7, commit_hash.len(), "Commit hash should be 7 chars!");
-    let git_dir = add_dir(home::cargo_home().unwrap(), "git/checkouts");
-    let option = std::fs::read_dir(git_dir).ok();
-    let mut commit_dir: Option<PathBuf> = None;
-    for entry in option.unwrap() {
-        let path = entry.ok()?.path();
-        if path.is_dir() && path.iter().last().unwrap().to_str().unwrap().starts_with(repo_name) {
-            commit_dir = Some(add_dir(path.clone(), commit_hash));
-        }
-    }
-    assert!(commit_dir.is_some(), "Can't find a repository '{:?}' or commit '{:?}' in Cargo cache!", repo_name, commit_hash);
-    return commit_dir;
-}
-
-fn get_component_dir(repo_name: &str, commit_hash: &str, dir: &str) -> PathBuf {
-    let dot_random_dir = get_dependency_dir(repo_name, commit_hash).unwrap();
-    let component_path = add_dir(dot_random_dir, dir);
-    return component_path;
 }

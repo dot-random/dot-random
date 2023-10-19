@@ -5,10 +5,10 @@ use scrypto_test::prelude::InMemorySubstateDatabase;
 use scrypto_unit::*;
 use transaction::prelude::*;
 
-use test_utils::{random_component_deploy_dir, RandomTestUtil};
+use test_utils::{deploy_random_component_from_dir, RandomTestEnv};
 
 pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InMemorySubstateDatabase>)
-        -> (RandomTestUtil<NoExtension, InMemorySubstateDatabase>, ComponentAddress) {
+        -> (RandomTestEnv<NoExtension, InMemorySubstateDatabase>, ComponentAddress) {
     // dir is different in Debug mode
     let root_dir = env::current_dir().ok().unwrap().ends_with("dot-random");
     let dir_royal = if root_dir { "./royalties" } else { "../royalties" };
@@ -16,7 +16,7 @@ pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InM
     let dir_example = if root_dir { "./tester" } else { "../tester" };
 
     // Deploy RandomComponent
-    let env = random_component_deploy_dir(test_runner, dir_royal, dir_component);
+    let env = deploy_random_component_from_dir(test_runner, dir_royal, dir_component);
 
     // Deploy ExampleCaller
     let example_component = deploy_caller_no_auth(test_runner, dir_example);
