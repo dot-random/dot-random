@@ -74,7 +74,7 @@ impl Random {
             let bytes = &self.seed[i..i + 4];
             let state = Num::from_bytes(bytes);
             let new_state = Self::apply_lehmer_transition(state);
-            new_seed.extend(new_state.to_be_bytes()); // flip the bytes from LE to BE
+            new_seed.extend(new_state.to_le_bytes()); // flip the bytes from BE to LE
             i += 4;
         }
         self.seed = new_seed;

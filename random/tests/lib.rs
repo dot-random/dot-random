@@ -5,7 +5,7 @@ fn test_next_int64() {
     let seed = [1u8, 2u8, 3u8, 4u8, 1u8, 2u8, 3u8, 4u8];
     let mut random = Random::new(&seed.to_vec());
     assert_eq!(8, random.size());
-    assert_eq!(289077004467372545, random.next_int::<u64>());
+    assert_eq!(0x0102030401020304, random.next_int::<u64>());
     assert_eq!(0, random.size());
 }
 
@@ -13,8 +13,7 @@ fn test_next_int64() {
 fn test_next_int32() {
     let seed = [1u8, 2u8, 3u8, 4u8];
     let mut random = Random::new(&seed.to_vec());
-    // 100 00000011 00000010 00000001
-    assert_eq!(67305985, random.next_int::<u32>());
+    assert_eq!(0x01020304, random.next_int::<u32>());
     assert_eq!(0, random.size());
 }
 
@@ -22,9 +21,8 @@ fn test_next_int32() {
 fn test_next_int16() {
     let seed = [1u8, 2u8, 3u8, 4u8];
     let mut random = Random::new(&seed.to_vec());
-    // 100 00000011 00000010 00000001
-    assert_eq!(513, random.next_int::<u16>());
-    assert_eq!(1027, random.next_int::<u16>());
+    assert_eq!(0x0102, random.next_int::<u16>());
+    assert_eq!(0x0304, random.next_int::<u16>());
     assert_eq!(0, random.size());
 }
 
@@ -56,8 +54,8 @@ fn test_roll() {
 
     assert_eq!(1, random.roll::<u8>(5));
     assert_eq!(0, random.roll::<u8>(2));
-    assert_eq!(19, random.roll::<u16>(24));
-    assert_eq!(85, random.roll::<u32>(100));
+    assert_eq!(16, random.roll::<u16>(21));
+    assert_eq!(60, random.roll::<u32>(100));
     assert_eq!(0, random.size());
 }
 
@@ -106,12 +104,9 @@ fn test_rotate() {
     let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     let mut random = Random::new(&seed.to_vec());
 
-    // 0100 00000011 00000010 00000001
-    assert_eq!(67305985, random.next_int::<u32>());
-    // 1000 00000111 00000110 00000101
-    assert_eq!(134678021, random.next_int::<u32>());
-    // 1100 00001011 00001010 00001001
-    assert_eq!(202050057, random.next_int::<u32>());
+    assert_eq!(0x01020304, random.next_int::<u32>());
+    assert_eq!(0x05060708, random.next_int::<u32>());
+    assert_eq!(0x090A0B0C, random.next_int::<u32>());
     assert_eq!(0, random.size());
     assert_eq!(0, random.rotations());
     println!("{:?}", random.seed());
@@ -121,27 +116,27 @@ fn test_rotate() {
     // assert_eq!(84148994, random.next_int::<u32>());
 
     // just a long deterministic sequence of numbers
-    assert_eq!(2760890918, random.next_int::<u32>());
-    assert_eq!(3586852952, random.next_int::<u32>());
-    assert_eq!(1929852809, random.next_int::<u32>());
+    assert_eq!(0x9F560A78, random.next_int::<u32>());
+    assert_eq!(0xCD873BB4, random.next_int::<u32>());
+    assert_eq!(0xFBB86C3C, random.next_int::<u32>());
     assert_eq!(1, random.rotations());
     println!("{:?}", random.seed());
 
-    assert_eq!(2251998094, random.next_int::<u32>());
-    assert_eq!(2368227722, random.next_int::<u32>());
-    assert_eq!(2424807888, random.next_int::<u32>());
+    assert_eq!(0xF9BF308C, random.next_int::<u32>());
+    assert_eq!(0x89621E84, random.next_int::<u32>());
+    assert_eq!(0x85800B08, random.next_int::<u32>());
     assert_eq!(2, random.rotations());
     println!("{:?}", random.seed());
 
-    assert_eq!(1867678831, random.next_int::<u32>());
-    assert_eq!(1444310146, random.next_int::<u32>());
-    assert_eq!(573580184, random.next_int::<u32>());
+    assert_eq!(0xEE72E9BC, random.next_int::<u32>());
+    assert_eq!(0xFB37CC78, random.next_int::<u32>());
+    assert_eq!(0x9A09A34, random.next_int::<u32>());
     assert_eq!(3, random.rotations());
     println!("{:?}", random.seed());
 
-    assert_eq!(2382462553, random.next_int::<u32>());
-    assert_eq!(1939739702, random.next_int::<u32>());
-    assert_eq!(3370680583, random.next_int::<u32>());
+    assert_eq!(0xA0D69508, random.next_int::<u32>());
+    assert_eq!(0x57534E0C, random.next_int::<u32>());
+    assert_eq!(0x53F45104, random.next_int::<u32>());
     assert_eq!(4, random.rotations());
     println!("{:?}", random.seed());
 

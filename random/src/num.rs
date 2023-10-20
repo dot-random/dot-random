@@ -10,7 +10,7 @@ macro_rules! impl_byte_nums (( $($int:ident),* ) => {
     $(
         impl Num for $int {
             const MAX: $int = $int::MAX;
-            fn from_bytes(bytes: &[u8]) -> Self { Self::from_le_bytes(bytes.try_into().unwrap()) }
+            fn from_bytes(bytes: &[u8]) -> Self { Self::from_be_bytes(bytes.try_into().unwrap()) }
         }
     )*
 });
