@@ -4,8 +4,8 @@ use random::Random;
 #[blueprint]
 mod caller_no_auth {
     extern_blueprint!(
-        // "package_tdx_2_1pk56nm7yuy3dcjx6awtj72ykx5grte0vukd0j8vl8algxnphwe8yz7",
-        "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
+        "package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6",
+        // "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {
             fn request_random(&self, address: ComponentAddress, method_name: String, on_error: String,
                 key: u32, badge_opt: Option<FungibleBucket>, expected_fee: u8) -> u32;
@@ -14,8 +14,8 @@ mod caller_no_auth {
 
     const RNG: Global<RandomComponent> = global_component!(
         RandomComponent,
-        // "component_tdx_2_1czgsfkdazhyhrs5238wh5phfk80ky8xzqvjwf7cpxwu76efl9jehcx"
-        "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnf7v0gx"
+        "component_tdx_2_1czzxynn4m4snhattvdf6knlyfs3ss70yufj975uh2mdhp8jes938sd"
+        // "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnf7v0gx"
     );
 
     struct ExampleCallerNoAuth {
