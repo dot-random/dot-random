@@ -20,63 +20,58 @@ pub struct RandomTestEnv<E: NativeVmExtension, D: TestDatabase> {
     pub owner_pk: Secp256k1PublicKey,
     pub watcher_badge: ResourceAddress,
 
+    pub callback_seq: u32,
     phantom: PhantomData<E>,
     phantom2: PhantomData<D>,
 }
 
 impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
 
-    pub fn process(&self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> CommitResult {
-        let receipt = self.try_process(test_runner, random_bytes);
+    pub fn execute_with_seed(&mut self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> CommitResult {
+        let receipt = self.try_execute_next(test_runner, random_bytes);
         return receipt.expect_commit_success().clone();
     }
 
-    pub fn process_num(&self, test_runner: &mut TestRunner<E, D>, num: u32) -> CommitResult {
-        let random_bytes: Vec<u8> = Self::deterministic_bytes_from_number(num);
-        let receipt = self.try_process(test_runner, random_bytes);
+    pub fn execute_next(&mut self, test_runner: &mut TestRunner<E, D>, random_number: u32) -> CommitResult {
+        let random_bytes: Vec<u8> = Self::deterministic_bytes_from_number(random_number);
+        let receipt = self.try_execute_next(test_runner, random_bytes);
         return receipt.expect_commit_success().clone();
     }
 
-    pub fn try_process(&self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> TransactionReceipt {
+    pub fn try_execute_next(&mut self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> TransactionReceipt {
+        self.callback_seq += 1;
+        return self.try_execute(test_runner, self.callback_seq, random_bytes);
+    }
+
+    pub fn execute(&self, test_runner: &mut TestRunner<E, D>,
+                       callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
+        let receipt = self.try_execute(test_runner, callback_id, random_bytes);
+        return receipt.expect_commit_success().clone();
+    }
+
+    pub fn try_execute(&self, test_runner: &mut TestRunner<E, D>, callback_id: u32, random_bytes: Vec<u8>) -> TransactionReceipt {
         let receipt = test_runner.execute_manifest_ignoring_fee(
             ManifestBuilder::new()
                 .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE)
                 .call_method(
                     self.component,
-                    "process",
-                    manifest_args!(random_bytes),
-                )
-                .build(), vec![NonFungibleGlobalId::from_public_key(&self.owner_pk)]);
-        return receipt;
-    }
-
-    pub fn process_one(&self, test_runner: &mut TestRunner<E, D>,
-                       callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
-        let receipt = self.try_process_one(test_runner, callback_id, random_bytes);
-        return receipt.expect_commit_success().clone();
-    }
-
-    pub fn try_process_one(&self, test_runner: &mut TestRunner<E, D>, callback_id: u32, random_bytes: Vec<u8>) -> TransactionReceipt {
-        let receipt = test_runner.execute_manifest_ignoring_fee(
-            ManifestBuilder::new()
-                .call_method(
-                    self.component,
-                    "process_one",
+                    "execute",
                     manifest_args!(callback_id, random_bytes),
                 )
-                .build(), vec![]);
+                .build(), vec![NonFungibleGlobalId::from_public_key(&self.owner_pk)]);
         return receipt;
     }
 
     pub fn handle_error(&self, test_runner: &mut TestRunner<E, D>, callback_id: u32) -> CommitResult {
         let receipt = test_runner.execute_manifest_ignoring_fee(
             ManifestBuilder::new()
+                .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE)
                 .call_method(
                     self.component,
                     "handle_error",
                     manifest_args!(callback_id),
                 )
-                .build(), vec![]);
+                .build(), vec![NonFungibleGlobalId::from_public_key(&self.owner_pk)]);
         let result = receipt.expect_commit_success();
         result.outcome.expect_success();
         return result.clone();
@@ -221,6 +216,8 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
         owner_account,
         owner_pk: public_key,
         watcher_badge,
+
+        callback_seq: 0,
 
         phantom: PhantomData,
         phantom2: PhantomData,

@@ -17,8 +17,6 @@ pub struct Callback {
     key: u32,
 }
 
-const MAX_BATCH_SIZE: u32 = 16;
-
 #[blueprint]
 #[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
 mod component {
@@ -66,11 +64,10 @@ mod component {
         },
         methods {
             request_random => PUBLIC;
-            process => restrict_to: [watcher];
-            process_one => restrict_to: [watcher];
+            execute => restrict_to: [watcher];
             handle_error => restrict_to: [watcher];
             evict => restrict_to: [watcher];
-            update_caller_royalties => restrict_to: [watcher, admin];
+            update_caller_royalties => restrict_to: [watcher];
             withdraw => restrict_to: [admin];
             withdraw_badges => restrict_to: [admin];
         }
@@ -84,8 +81,8 @@ mod component {
         /// Holds the badge that we present when executing the `callback` and `on_error`.
         badges: Vault,
 
+        /// Callback ID sequence
         callback_seq: u32,
-        last_processed_id: u32,
 
         /// Royalties Level per known caller Component, cents. Should be [0-8, 10].
         caller_royalties: KeyValueStore<ComponentAddress, u8>,
@@ -95,11 +92,9 @@ mod component {
     impl RandomComponent {
         /// Instantiate in Stokenet and Mainnet
         pub fn instantiate(owner_badge: ResourceAddress, watcher_badge: ResourceAddress) -> Global<RandomComponent> {
-            return Self::globalize(
-                Self::instantiate_local(owner_badge, None),
-                owner_badge,
-                watcher_badge,
-                None,
+            return Self::do_instantiate(
+                owner_badge, watcher_badge,
+                None, None
             );
         }
 
@@ -109,30 +104,42 @@ mod component {
             component_address: GlobalAddressReservation,
             component_badge_address: GlobalAddressReservation,
         ) -> Global<RandomComponent> {
-            return Self::globalize(
-                Self::instantiate_local(owner_badge, Some(component_badge_address)),
+            return Self::do_instantiate(
                 owner_badge, watcher_badge,
+                Some(component_badge_address),
                 Some(component_address),
             );
         }
 
-        fn globalize(comp: Owned<RandomComponent>,
-                     owner_resource: ResourceAddress,
-                     watcher_resource: ResourceAddress,
-                     component_addr: Option<GlobalAddressReservation>) -> Global<RandomComponent> {
+        fn do_instantiate(owner_badge: ResourceAddress,
+                          watcher_badge: ResourceAddress,
+                          comp_badge_address: Option<GlobalAddressReservation>,
+                          component_addr: Option<GlobalAddressReservation>) -> Global<RandomComponent> {
+            let comp_badge = Self::create_component_badge(owner_badge, comp_badge_address);
+            debug!("comp_badge: {:?}", comp_badge.resource_address());
+
+            let comp: Owned<RandomComponent> = Self {
+                queue: KeyValueStore::new_with_registered_type(),
+                vaults: KeyValueStore::new_with_registered_type(),
+
+                badges: Vault::with_bucket(comp_badge),
+
+                callback_seq: 0,
+
+                caller_royalties: KeyValueStore::new_with_registered_type(),
+            }.instantiate();
             let mut globalizing = comp
                 .prepare_to_globalize(OwnerRole::Fixed(
-                    rule!(require(owner_resource))
+                    rule!(require(owner_badge))
                 ))
                 .roles(roles!(
-                    admin => rule!(require(owner_resource));
-                    watcher => rule!(require(watcher_resource));
+                    admin => rule!(require(owner_badge));
+                    watcher => rule!(require(watcher_badge));
                 ))
                 .enable_component_royalties(component_royalties! {
                     init {
                         request_random => Usd(dec!(0.06)), locked;
-                        process => Free, locked;
-                        process_one => Free, locked;
+                        execute => Free, locked;
                         handle_error => Free, locked;
                         evict => Free, locked;
                         update_caller_royalties => Free, locked;
@@ -145,25 +152,6 @@ mod component {
             }
             return globalizing.globalize();
         }
-
-        fn instantiate_local(owner_badge: ResourceAddress, comp_badge_address: Option<GlobalAddressReservation>) -> Owned<RandomComponent> {
-            let comp_badge = Self::create_component_badge(owner_badge, comp_badge_address);
-            debug!("comp_badge: {:?}", comp_badge.resource_address());
-
-            let comp: Owned<RandomComponent> = Self {
-                queue: KeyValueStore::new_with_registered_type(),
-                vaults: KeyValueStore::new_with_registered_type(),
-
-                badges: Vault::with_bucket(comp_badge),
-
-                callback_seq: 0,
-                last_processed_id: 0,
-
-                caller_royalties: KeyValueStore::new_with_registered_type(),
-            }.instantiate();
-            return comp;
-        }
-
 
         fn create_component_badge(owner_badge_addr: ResourceAddress, badge_address: Option<GlobalAddressReservation>) -> Bucket {
             let mut builder = ResourceBuilder::new_fungible(
@@ -230,36 +218,10 @@ mod component {
         }
 
         /**
-         * Will be called by the Random Watcher off-ledger service sometime in the future.
-         * For now, it's just a template.
-         */
-        pub fn process(&mut self, random_seed: Vec<u8>) {
-            debug!("EXEC:RandomComponent::process({:?}..{:?}, {:?})", self.last_processed_id, self.callback_seq, random_seed);
-
-            let mut id = self.last_processed_id;
-            let start = id;
-            let end = self.callback_seq.min(start + MAX_BATCH_SIZE);
-            let mut seed = random_seed.clone();
-            while id < end {
-                if id != start {
-                    seed.rotate_left(7);
-                };
-
-                id += 1;
-                self.do_process(id, seed.clone());
-            }
-            self.last_processed_id = id;
-        }
-
-        /**
-         * Process a specific callback. Will be used until we can reliably process the whole queue.
+         * Execute a specific callback. Will be used until we can reliably process the whole queue.
          * Also called to preview the execution result (Success/Failure) of a specific Callback.
          */
-        pub fn process_one(&mut self, callback_id: u32, random_seed: Vec<u8>) {
-            self.do_process(callback_id, random_seed);
-        }
-
-        fn do_process(&mut self, callback_id: u32, random_seed: Vec<u8>) {
+        pub fn execute(&mut self, callback_id: u32, random_seed: Vec<u8>) {
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
                 let callback = queue_item.unwrap();
@@ -283,6 +245,7 @@ mod component {
             }
         }
 
+        /// In case calling `method_name()` on a specific callback panics.
         pub fn handle_error(&mut self, callback_id: u32) {
             let queue_item: Option<Callback> = self.queue.remove(&callback_id);
             if queue_item.is_some() {
@@ -317,14 +280,14 @@ mod component {
 
         /// Updates the royalties for a specific component.
         /// Called by the off-ledger service to maintain the royalties gained from `request_random()`
-        /// at a level matching the TX fees incurred when calling `process()`.
+        /// at a level matching the TX fees incurred when calling `execute()`.
         ///
         pub fn update_caller_royalties(&mut self, address: ComponentAddress, royalty: u8) {
             assert!(royalty <= 60, "Incorrect Royalty level: {}", royalty);
             self.caller_royalties.insert(address, royalty);
         }
 
-        /// Withdraw the assets, e.g. when both callback and error hadnler failed, and we had to evict it.
+        /// Withdraw the assets, e.g. when both callback and error handler failed, and we had to evict it.
         pub fn withdraw(&mut self, resource: ResourceAddress, amount: Decimal) -> Bucket {
             let opt = self.vaults.get_mut(&resource);
             return opt.unwrap().take(amount);

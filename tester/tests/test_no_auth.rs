@@ -8,7 +8,7 @@ fn request_mint_no_auth() {
     // Arrange
     let mut test_runner = TestRunnerBuilder::new().build();
 
-    let (random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
+    let (mut random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
     // 1. Request mint - should return callback id: 1
@@ -24,8 +24,8 @@ fn request_mint_no_auth() {
     let out = result.outcome.expect_success();
     out[1].expect_return_value(&1u32);
 
-    // 2. Watcher calls RandomComponent.process() to do the actual mint - should mint an NFT
-    random_env.process_num(&mut test_runner, 1);
+    // 2. Watcher calls RandomComponent.execute() to do the actual mint - should mint an NFT
+    random_env.execute_next(&mut test_runner, 1);
 
     // Assert
 }
