@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt};
 use radix_engine::vm::NativeVmExtension;
-use scrypto_unit::*;
+use scrypto_unit::{TestRunner, TestDatabase};
 use transaction::prelude::*;
 pub mod cargo;
 use crate::cargo::*;

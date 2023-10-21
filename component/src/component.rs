@@ -75,17 +75,18 @@ mod component {
     struct RandomComponent {
         /// Enqueued callbacks to process.
         queue: KeyValueStore<u32, Callback>,
+
         /// Holds the tokens that should be sent back to the Caller to auth the `callback` and `on_error`.
         vaults: KeyValueStore<ResourceAddress, Vault>,
 
         /// Holds the badge that we present when executing the `callback` and `on_error`.
         badges: Vault,
 
-        /// Callback ID sequence
-        callback_seq: u32,
-
         /// Royalties Level per known caller Component, cents. Should be [0-8, 10].
         caller_royalties: KeyValueStore<ComponentAddress, u8>,
+
+        /// Callback ID sequence
+        callback_seq: u32,
     }
 
 
