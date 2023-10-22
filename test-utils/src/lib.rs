@@ -10,6 +10,7 @@ pub mod constants;
 use crate::constants::*;
 
 
+#[derive(Clone)]
 pub struct RandomTestEnv<E: NativeVmExtension, D: TestDatabase> {
     pub package: PackageAddress,
     pub component: ComponentAddress,
