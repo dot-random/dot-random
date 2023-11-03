@@ -18,45 +18,8 @@ pub struct Callback {
 }
 
 #[blueprint]
-#[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
+#[types(u32, Callback, ResourceAddress, Vault)]
 mod component {
-    extern_blueprint!(
-        "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgq0alh7ycnvjfe4t",
-        DynamicRoyalties {
-            fn r1(&self);
-            fn r2(&self);
-            fn r3(&self);
-            fn r4(&self);
-            fn r5(&self);
-            fn r6(&self);
-        }
-    );
-
-
-    // The components that gathers royalties. Need separate components to charge dynamic royalties,
-    // based on the known average execution cost of the `callback` and `on_error` handlers.
-    //
-    const C0: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqmnwdehjz0vev");
-    const C1: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqymnwdehr9lszd");
-    const C2: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqgmnwdehevxaxw");
-    const C3: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqvmnwdehgtkpa0");
-    const C4: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqsmnwdehy7a8wg");
-    const C5: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqq5mnwdeh4edm4f");
-    const C6: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqcmnwdeh0s5k32");
-    const C7: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqumnwdeh7hy22t");
-    const C8: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpqmnwdeh0a0a3x");
-    const C9: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpymnwdeh76lp28");
-
     enable_method_auth! {
         roles {
             admin => updatable_by: [];
@@ -67,7 +30,6 @@ mod component {
             execute => restrict_to: [watcher];
             handle_error => restrict_to: [watcher];
             evict => restrict_to: [watcher];
-            update_caller_royalties => restrict_to: [watcher];
             withdraw => restrict_to: [admin];
             withdraw_badges => restrict_to: [admin];
         }
@@ -82,9 +44,6 @@ mod component {
         /// Holds the badge that we present when executing the `callback` and `on_error`.
         badges: Vault,
 
-        /// Royalties Level per known caller Component, cents. Should be [0-8, 10].
-        caller_royalties: KeyValueStore<ComponentAddress, u8>,
-
         /// Callback ID sequence
         callback_seq: u32,
     }
@@ -92,31 +51,34 @@ mod component {
 
     impl RandomComponent {
         /// Instantiate in Stokenet and Mainnet
-        pub fn instantiate(owner_badge: ResourceAddress, watcher_badge: ResourceAddress) -> Global<RandomComponent> {
+        pub fn instantiate() -> (Global<RandomComponent>, Bucket, Bucket) {
             return Self::do_instantiate(
-                owner_badge, watcher_badge,
                 None, None
             );
         }
 
         /// Instantiate with Component and Badge address reservation - for unit tests
         pub fn instantiate_addr_badge(
-            owner_badge: ResourceAddress, watcher_badge: ResourceAddress,
             component_address: GlobalAddressReservation,
             component_badge_address: GlobalAddressReservation,
-        ) -> Global<RandomComponent> {
+        ) -> (Global<RandomComponent>, Bucket, Bucket) {
             return Self::do_instantiate(
-                owner_badge, watcher_badge,
                 Some(component_badge_address),
                 Some(component_address),
             );
         }
 
-        fn do_instantiate(owner_badge: ResourceAddress,
-                          watcher_badge: ResourceAddress,
-                          comp_badge_address: Option<GlobalAddressReservation>,
-                          component_addr: Option<GlobalAddressReservation>) -> Global<RandomComponent> {
-            let comp_badge = Self::create_component_badge(owner_badge, comp_badge_address);
+        fn do_instantiate(comp_badge_address: Option<GlobalAddressReservation>,
+                          component_addr: Option<GlobalAddressReservation>) -> (Global<RandomComponent>, Bucket, Bucket) {
+            let owner_badge = Self::create_owner_badge();
+            let owner_badge_addr = owner_badge.resource_address();
+            debug!("owner_badge: {:?}", owner_badge_addr);
+
+            let watcher_badge = Self::create_watcher_badge(owner_badge_addr);
+            let watcher_badge_addr = watcher_badge.resource_address();
+            debug!("watcher_badge: {:?}", watcher_badge_addr);
+
+            let comp_badge = Self::create_component_badge(owner_badge_addr, comp_badge_address);
             debug!("comp_badge: {:?}", comp_badge.resource_address());
 
             let comp: Owned<RandomComponent> = Self {
@@ -126,16 +88,14 @@ mod component {
                 badges: Vault::with_bucket(comp_badge),
 
                 callback_seq: 0,
-
-                caller_royalties: KeyValueStore::new_with_registered_type(),
             }.instantiate();
             let mut globalizing = comp
                 .prepare_to_globalize(OwnerRole::Fixed(
-                    rule!(require(owner_badge))
+                    rule!(require(owner_badge_addr))
                 ))
                 .roles(roles!(
-                    admin => rule!(require(owner_badge));
-                    watcher => rule!(require(watcher_badge));
+                    admin => rule!(require(owner_badge_addr));
+                    watcher => rule!(require(watcher_badge_addr));
                 ))
                 .enable_component_royalties(component_royalties! {
                     init {
@@ -143,7 +103,6 @@ mod component {
                         execute => Free, locked;
                         handle_error => Free, locked;
                         evict => Free, locked;
-                        update_caller_royalties => Free, locked;
                         withdraw => Free, locked;
                         withdraw_badges => Free, locked;
                     }
@@ -151,8 +110,53 @@ mod component {
             if component_addr.is_some() {
                 globalizing = globalizing.with_address(component_addr.unwrap());
             }
-            return globalizing.globalize();
+            return (globalizing.globalize(), owner_badge, watcher_badge);
         }
+
+
+        fn create_owner_badge() -> Bucket {
+            return ResourceBuilder::new_fungible(OwnerRole::None)
+                .divisibility(DIVISIBILITY_NONE)
+                .metadata(metadata!(
+                    init {
+                        "name" => "Random Component Owner", locked;
+                        "symbol" => "RCOWNER", locked;
+                        "description" => "A badge that allows managing the RandomComponent", locked;
+                        "tags" => vec!("badge", "rng", ".random", "Random-Component"), updatable;
+                    }
+                ))
+                .mint_initial_supply(10)
+                .into();
+        }
+
+        fn create_watcher_badge(owner_badge_addr: ResourceAddress) -> Bucket {
+            return ResourceBuilder::new_fungible(
+                OwnerRole::Fixed(rule!(require(owner_badge_addr))))
+                .mint_roles(mint_roles! {
+                    minter => rule!(require(owner_badge_addr));
+                    minter_updater => rule!(deny_all);
+                })
+                .burn_roles(burn_roles! {
+                    burner => rule!(require(owner_badge_addr));
+                    burner_updater => rule!(deny_all);
+                })
+                .recall_roles(recall_roles! {
+                    recaller => rule!(require(owner_badge_addr));
+                    recaller_updater => rule!(deny_all);
+                })
+                .divisibility(DIVISIBILITY_NONE)
+                .metadata(metadata!(
+                    init {
+                        "name" => "Random Component Watcher", locked;
+                        "symbol" => "RCWATCH", locked;
+                        "description" => "A badge that allows executing ", locked;
+                        "tags" => vec!("badge", "rng", ".random", "Random-Component", "bot"), updatable;
+                    }
+                ))
+                .mint_initial_supply(2)
+                .into();
+        }
+
 
         fn create_component_badge(owner_badge_addr: ResourceAddress, badge_address: Option<GlobalAddressReservation>) -> Bucket {
             let mut builder = ResourceBuilder::new_fungible(
@@ -181,10 +185,8 @@ mod component {
          * the Caller should also pass a badge that controls access to <method_name>().
          */
         pub fn request_random(&mut self, address: ComponentAddress, method_name: String, on_error: String,
-                              key: u32, badge_opt: Option<FungibleBucket>, expected_fee: u8) -> u32 {
-            debug!("EXEC:RandomComponent::request_random({:?}..{:?}, {:?}, {:?}, {:?}, {:?})", address, method_name, on_error, key, badge_opt, expected_fee);
-
-            self.charge_royalty(&address, expected_fee);
+                              key: u32, badge_opt: Option<FungibleBucket>) -> u32 {
+            debug!("EXEC:RandomComponent::request_random({:?}..{:?}, {:?}, {:?}, {:?})", address, method_name, on_error, key, badge_opt);
 
             let mut resource: Option<ResourceAddress> = None;
             let mut amount = Decimal::ZERO;
@@ -274,18 +276,9 @@ mod component {
         }
 
         /// Evicts a faulty callback from the queue.
-        /// A callback is considered faulty when both <method_name> and <on_error> panic during the simulation.
+        /// A callback is considered faulty when both <method_name> and <on_error> panic during the execution.
         pub fn evict(&mut self, callback_id: u32) {
             self.queue.remove(&callback_id);
-        }
-
-        /// Updates the royalties for a specific component.
-        /// Called by the off-ledger service to maintain the royalties gained from `request_random()`
-        /// at a level matching the TX fees incurred when calling `execute()`.
-        ///
-        pub fn update_caller_royalties(&mut self, address: ComponentAddress, royalty: u8) {
-            assert!(royalty <= 60, "Incorrect Royalty level: {}", royalty);
-            self.caller_royalties.insert(address, royalty);
         }
 
         /// Withdraw the assets, e.g. when both callback and error handler failed, and we had to evict it.
@@ -297,47 +290,6 @@ mod component {
         /// Withdraw badges, e.g. to migrate to a new version of the component
         pub fn withdraw_badges(&mut self, amount: Decimal) -> Bucket {
             return self.badges.take(amount);
-        }
-
-        fn charge_royalty(&mut self, address: &ComponentAddress, expected_fee: u8) {
-            let option: Option<_> = self.caller_royalties.get(&address);
-            let level = if option.is_some() {
-                *option.unwrap()
-            } else if expected_fee <= 60 {
-                expected_fee
-            } else {
-                6u8 // 1 XRD by default
-            };
-            if level > 0u8 {
-                let component_idx = (level - 1) / 6u8;
-                let component = match component_idx {
-                    0 => { C0 }
-                    1 => { C1 }
-                    2 => { C2 }
-                    3 => { C3 }
-                    4 => { C4 }
-                    5 => { C5 }
-                    6 => { C6 }
-                    7 => { C7 }
-                    8 => { C8 }
-                    9 => { C9 }
-                    _ => { panic!("No FeeAdvance component with idx: {:?}", component_idx) }
-                };
-                let additional_fee = (level - 1) % 6u8 + 1;
-                debug!("EXEC:RandomComponent::charge_royalty(C{:?}.r{:?}() [{:?} cents])", component_idx, additional_fee, level);
-                match additional_fee {
-                    1 => { component.r1(); }
-                    2 => { component.r2(); }
-                    3 => { component.r3(); }
-                    4 => { component.r4(); }
-                    5 => { component.r5(); }
-                    6 => { component.r6(); }
-                    _ => { /* impossible */ }
-                };
-            } else {
-                debug!("EXEC:RandomComponent::charge_royalty(SKIP)");
-            }
-
         }
 
     }

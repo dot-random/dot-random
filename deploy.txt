@@ -1,22 +1,17 @@
-1. `scrypto build --path ./royalties`
-2. Deploy the package
-3. instantiate (mani below)
-4. Update addresses in component.rs
-5. `scrypto build --path ./component`
+1. `scrypto build --path ./component`
+2. deploy the package
+3. instantiate
+4. update addresses in caller_no_auth
+5. `scrypto build --path ./tester`
 6. deploy the package
 7. instantiate
-8. update addresses in caller_no_auth
-9. `scrypto build --path ./tester`
-10. deploy the package
-11. instantiate
-12. transfer the watcher badge
+8. transfer the watcher badge
+9. Transfer XRD to the watcher address
 
 
 
 
 
-
-Royalties package: package_tdx_2_1p4pcmxq86t46g30rzs4tvmzlwsf6pr23c7vf694j4ywan7usy7yplt
 Component package: package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6
 Caller package: package_tdx_2_1p5xrcp59dxw0rjhzmnqs4a4rxd824edl4hhpha5rg7zuxm095xm8pu
 
@@ -27,17 +22,6 @@ Watch badge: resource_tdx_2_1thw49lvlthndn2rfmey7p6thduqvlt8ayd5jjdq8gm6xq3y255t
 Comp  badge: resource_tdx_2_1t59tdtsvv7sc0nej3z585w5nmqpq3z5cms7xdwvkyqaqreu9j3rvyu
 Component: component_tdx_2_1czzxynn4m4snhattvdf6knlyfs3ss70yufj975uh2mdhp8jes938sd
 
-------------------
-CALL_FUNCTION
-    Address("package_tdx_2_1p4pcmxq86t46g30rzs4tvmzlwsf6pr23c7vf694j4ywan7usy7yplt")
-    "Deployer"
-    "instantiate"
-    ;
-CALL_METHOD
-    Address("account_tdx_2_128486ukscr0auknfs5z5s904f99u3vv7cls5xrtl5chxwjlzjugngl")
-    "deposit_batch"
-    Expression("ENTIRE_WORKTOP")
-    ;
 ------------------
 CALL_FUNCTION
     Address("package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6")

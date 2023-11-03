@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "random",
-    "royalties",
     "component",
     "test-utils",
     "tester",

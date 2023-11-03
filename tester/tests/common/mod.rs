@@ -11,12 +11,11 @@ pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InM
         -> (RandomTestEnv<NoExtension, InMemorySubstateDatabase>, ComponentAddress) {
     // dir is different in Debug mode
     let root_dir = env::current_dir().ok().unwrap().ends_with("dot-random");
-    let dir_royal = if root_dir { "./royalties" } else { "../royalties" };
     let dir_component = if root_dir { "./component" } else { "../component" };
     let dir_example = if root_dir { "./tester" } else { "../tester" };
 
     // Deploy RandomComponent
-    let env = deploy_random_component_from_dir(test_runner, dir_royal, dir_component);
+    let env = deploy_random_component_from_dir(test_runner, dir_component);
 
     // Deploy ExampleCaller
     let example_component = deploy_caller_no_auth(test_runner, dir_example);
