@@ -8,7 +8,7 @@ mod caller_no_auth {
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {
             fn request_random(&self, address: ComponentAddress, method_name: String, on_error: String,
-                key: u32, badge_opt: Option<FungibleBucket>) -> u32;
+                key: u32, badge_opt: Option<FungibleBucket>, expected_fee: u8) -> u32;
         }
     );
 
@@ -57,8 +57,12 @@ mod caller_no_auth {
             let key = nft_id.into();
             // The auth badge. Will be returned fully with the callback
             let badge_opt: Option<FungibleBucket> = None;
+            // How much you would expect the callback to cost, cents (e.g. test on Stokenet).
+            // It helps to avoid a sharp increase in royalties during the first few invocations of `request_random()`
+            // but is completely optional.
+            let expected_fee = 0u8;
 
-            return RNG.request_random(address, method_name, on_error, key, badge_opt);
+            return RNG.request_random(address, method_name, on_error, key, badge_opt, expected_fee);
         }
 
         /// Executed by our RandomWatcher off-ledger service (through [RandomComponent]).
