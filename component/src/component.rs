@@ -82,7 +82,7 @@ mod component {
         /// Holds the badge that we present when executing the `callback` and `on_error`.
         badges: Vault,
 
-        /// Royalties Level per known caller Component, cents. Should be [0-8, 10].
+        /// Royalties Level per known caller Component, cents. Should be [0, 60].
         caller_royalties: KeyValueStore<ComponentAddress, u8>,
 
         /// Callback ID sequence
@@ -274,7 +274,7 @@ mod component {
         }
 
         /// Evicts a faulty callback from the queue.
-        /// A callback is considered faulty when both <method_name> and <on_error> panic during the simulation.
+        /// A callback is considered faulty when both <method_name> and <on_error> panic during the execution.
         pub fn evict(&mut self, callback_id: u32) {
             self.queue.remove(&callback_id);
         }
