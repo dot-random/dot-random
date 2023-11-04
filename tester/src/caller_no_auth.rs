@@ -4,6 +4,7 @@ use random::Random;
 #[blueprint]
 mod caller_no_auth {
     extern_blueprint!(
+        // "package_rdx1p55tuj30yf842s6cjraqz5arhtf98jcjtmkjcmxrn6efvvc829g2jf"
         // "package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6",
         "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqqqqycnnzj0hj",
         MyRandom as RandomComponent {

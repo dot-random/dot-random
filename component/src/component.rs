@@ -21,7 +21,7 @@ pub struct Callback {
 #[types(u32, Callback, ResourceAddress, Vault, ComponentAddress, u8)]
 mod component {
     extern_blueprint!(
-        "package_sim1p5qqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgq0alh7ycnvjfe4t",
+        "package_rdx1p449l2st4nncankt3rn50dht7c2f3eqvdeumu2cmmgfe8tqz8dkaae",
         DynamicRoyalties {
             fn r1(&self);
             fn r2(&self);
@@ -37,25 +37,25 @@ mod component {
     // based on the known average execution cost of the `callback` and `on_error` handlers.
     //
     const C0: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqqmnwdehjz0vev");
+                    "component_rdx1czmuevtw7kmj6p95udqzpjk6legf4ddxklkh8pcfrgvqsza8wq8r0y");
     const C1: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqymnwdehr9lszd");
+                    "component_rdx1cqdkuneammh0y7s8a4lqylf9534cdnpumwhz80nkz9hkf9d6eufcnc");
     const C2: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqgmnwdehevxaxw");
+                    "component_rdx1cqsch2aae5wa03n37ss9wpkc6vpc3452edw9gvgc2xwjy20dn5fjv8");
     const C3: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqvmnwdehgtkpa0");
+                    "component_rdx1cqmrd7yfz09h8ljss5h5h7c762zrwfrz537gsvtuxrtwldlpsjrnfg");
     const C4: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqsmnwdehy7a8wg");
+                    "component_rdx1cpztduguv00pfsavzv0d2vu3yx0lpvtp83qzpdd6mp8wd7g7x4n2d9");
     const C5: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqq5mnwdeh4edm4f");
+                    "component_rdx1cr87ckeqsrl40474c3p9lvs84ev64tmxjsqeehzeqra7k274jv7t5j");
     const C6: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqcmnwdeh0s5k32");
+                    "component_rdx1cqerkat7nv04z26jck4lfklvngvr86zwex6uaqkyn8435v0fukuxhq");
     const C7: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqqumnwdeh7hy22t");
+                    "component_rdx1cretnv9nfyertg2fmp2e0sea7m9nu6etxr5ewlngzxp0s53m3g7yd0");
     const C8: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpqmnwdeh0a0a3x");
+                    "component_rdx1cr442xkdwuxuwlne787n9xw9srnlphpuz2l0u5uqjyda6njwg6r606");
     const C9: Global<DynamicRoyalties> = global_component!(DynamicRoyalties,
-                    "component_sim1cqqqqqqqqyqszqgqqqqqqqgpqyqsqqqqxumnwqgqpymnwdeh76lp28");
+                    "component_rdx1czgep7qujkhrjym5l93esy0v23y7cf46zv8crwjya5r76e736jn2v2");
 
     enable_method_auth! {
         roles {

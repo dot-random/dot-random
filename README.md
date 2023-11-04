@@ -23,7 +23,9 @@ See an example in  [badge_auth.rs](https://github.com/dot-random/examples/blob/m
 
 #### IDs on Mainnet:
 ```html
-Not deployed yet
+package_rdx1p55tuj30yf842s6cjraqz5arhtf98jcjtmkjcmxrn6efvvc829g2jf
+component_rdx1cqz6m403yq9xzqj7g5ujq3yd6w0ge8shur53z8754gj8rxde8xd0sr
+resource_rdx1thufp23mqn3hefdza383tk2fxs3rvwv97djzq8x5czzdqrgkc807wj
 ```
 #### IDs on StokeNet:
 ```html

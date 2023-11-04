@@ -14,8 +14,38 @@
 
 
 
+MAINNET:
+Royalties package: package_rdx1p449l2st4nncankt3rn50dht7c2f3eqvdeumu2cmmgfe8tqz8dkaae
+Component package: package_rdx1p55tuj30yf842s6cjraqz5arhtf98jcjtmkjcmxrn6efvvc829g2jf
 
+Deployer account: account_rdx129tyxw52gn2hhzlvj7advpqc0225d6pvzwzkdx80ezjwd8hxj5mm7l
 
+Owner badge: resource_rdx1thwlyn3yhpdxzwx5he326hm4lp8mzrek4qfsst20s9xzr97c4v5vck
+Watch badge: resource_rdx1thaavv96n7adx3nw62hpukpumwfkh9k3y6q0welkjfmhsut4q5wanz
+Comp  badge: resource_rdx1thufp23mqn3hefdza383tk2fxs3rvwv97djzq8x5czzdqrgkc807wj
+Component: component_rdx1cqz6m403yq9xzqj7g5ujq3yd6w0ge8shur53z8754gj8rxde8xd0sr
+------------------
+CALL_FUNCTION
+    Address("package_rdx1p449l2st4nncankt3rn50dht7c2f3eqvdeumu2cmmgfe8tqz8dkaae")
+    "Deployer"
+    "instantiate"
+    ;
+CALL_METHOD
+    Address("account_rdx129tyxw52gn2hhzlvj7advpqc0225d6pvzwzkdx80ezjwd8hxj5mm7l")
+    "deposit_batch"
+    Expression("ENTIRE_WORKTOP")
+    ;
+------------------
+CALL_FUNCTION
+    Address("package_rdx1p55tuj30yf842s6cjraqz5arhtf98jcjtmkjcmxrn6efvvc829g2jf")
+    "RandomComponent"
+    "instantiate"
+    Address("resource_rdx1thwlyn3yhpdxzwx5he326hm4lp8mzrek4qfsst20s9xzr97c4v5vck")
+    Address("resource_rdx1thaavv96n7adx3nw62hpukpumwfkh9k3y6q0welkjfmhsut4q5wanz")
+    ;
+------------------
+===================================
+STOKENET:
 Royalties package: package_tdx_2_1p4pcmxq86t46g30rzs4tvmzlwsf6pr23c7vf694j4ywan7usy7yplt
 Component package: package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6
 Caller package: package_tdx_2_1p5xrcp59dxw0rjhzmnqs4a4rxd824edl4hhpha5rg7zuxm095xm8pu
