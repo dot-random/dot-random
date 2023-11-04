@@ -8,7 +8,10 @@ pub fn get_dependency_dir(repo_name: &str, commit_hash: &str) -> Option<PathBuf>
     for entry in option.unwrap() {
         let path = entry.ok()?.path();
         if path.is_dir() && path.iter().last().unwrap().to_str().unwrap().starts_with(repo_name) {
-            commit_dir = Some(add_dir(path.clone(), commit_hash));
+            let path_buf = add_dir(path.clone(), commit_hash);
+            if path_buf.is_dir() {
+                commit_dir = Some(path_buf);
+            }
         }
     }
     assert!(commit_dir.is_some(), "Can't find a repository '{:?}' or commit '{:?}' in Cargo cache!", repo_name, commit_hash);
