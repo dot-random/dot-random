@@ -6,10 +6,10 @@ version = "0.1.0"
 
 [dependencies]
 random = { path = "../random" }
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
-radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
-scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.1" }
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
 home = "0.5.5"
 getrandom = { version = "0.2", features = ["js"] }
 

@@ -98,6 +98,8 @@ impl Random {
         return ((state as u64) * 48271u64 % modulo) as u32;
     }
 
+    /// Returns `true` or `false`.
+    ///
     pub fn next_bool(&mut self) -> bool {
         let size = 1u8;
         let res = (self.slice(size as usize)[0] % 2) == 1;
@@ -115,7 +117,7 @@ impl Random {
         return num;
     }
 
-    /// Returns a random number in range [min, max).
+    /// Returns a random number in the range [min, max).
     pub fn in_range<T>(&mut self, min: T, max: T) -> T where T: Num {
         return if min < max {
             min + self.roll(max - min)
