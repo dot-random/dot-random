@@ -29,9 +29,9 @@ resource_rdx1thufp23mqn3hefdza383tk2fxs3rvwv97djzq8x5czzdqrgkc807wj
 ```
 #### IDs on StokeNet:
 ```html
-package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6
-component_tdx_2_1czzxynn4m4snhattvdf6knlyfs3ss70yufj975uh2mdhp8jes938sd
-resource_tdx_2_1t59tdtsvv7sc0nej3z585w5nmqpq3z5cms7xdwvkyqaqreu9j3rvyu
+package_tdx_2_1pk4su4de0gqlx9ljw3c9ydf6xzf8tfsy3eydjx0tky0v4529f5gp27
+component_tdx_2_1cryx5n3tmzw3uhy93ckdcjujzacc8wfftxplykssfjm7krwlutwhpc
+resource_tdx_2_1thh46h09q746p2rstrkg60p0ve0rza750t7ykcyqcw74pne5n7e9s6
 ```
 #### IDs in scrypto-test:
 ```html

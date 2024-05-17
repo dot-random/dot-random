@@ -5,12 +5,13 @@
 5. `scrypto build --path ./component`
 6. deploy the package
 7. instantiate
-8. update addresses in caller_no_auth
-9. `scrypto build --path ./tester`
-10. deploy the package
-11. instantiate
-12. transfer the watcher badge
-
+8. update addresses in caller_no_auth   [Stoke]
+9. `scrypto build --path ./tester`      [Stoke]
+10. deploy the package                  [Stoke]
+11. instantiate                         [Stoke]
+12. transfer the watcher badge and XRD
+13. update component and royalty addresses in the Watcher properties
+14. start Watcher service.
 
 
 
@@ -24,6 +25,8 @@ Owner badge: resource_rdx1thwlyn3yhpdxzwx5he326hm4lp8mzrek4qfsst20s9xzr97c4v5vck
 Watch badge: resource_rdx1thaavv96n7adx3nw62hpukpumwfkh9k3y6q0welkjfmhsut4q5wanz
 Comp  badge: resource_rdx1thufp23mqn3hefdza383tk2fxs3rvwv97djzq8x5czzdqrgkc807wj
 Component: component_rdx1cqz6m403yq9xzqj7g5ujq3yd6w0ge8shur53z8754gj8rxde8xd0sr
+
+WATCHER:
 ------------------
 CALL_FUNCTION
     Address("package_rdx1p449l2st4nncankt3rn50dht7c2f3eqvdeumu2cmmgfe8tqz8dkaae")
@@ -46,20 +49,22 @@ CALL_FUNCTION
 ------------------
 ===================================
 STOKENET:
-Royalties package: package_tdx_2_1p4pcmxq86t46g30rzs4tvmzlwsf6pr23c7vf694j4ywan7usy7yplt
-Component package: package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6
-Caller package: package_tdx_2_1p5xrcp59dxw0rjhzmnqs4a4rxd824edl4hhpha5rg7zuxm095xm8pu
+Royalties package: package_tdx_2_1phrzx0ccda63uwxw5u2dxghavk0l4as0r6zaaffr4jvu8fsu6ut3xk
+Component package: package_tdx_2_1pk4su4de0gqlx9ljw3c9ydf6xzf8tfsy3eydjx0tky0v4529f5gp27
+Caller package: package_tdx_2_1p572mvwx2x8e6kz64e6msded90e4nkx64muynfqwmtkyps7uqeh2mu
 
 Deployer account: account_tdx_2_128486ukscr0auknfs5z5s904f99u3vv7cls5xrtl5chxwjlzjugngl
 
-Owner badge: resource_tdx_2_1t4fxtpmk6c5dhfx9jk9zydqy90k7jw2lpwf0dv0dctec2gmh797320
-Watch badge: resource_tdx_2_1thw49lvlthndn2rfmey7p6thduqvlt8ayd5jjdq8gm6xq3y255tcx8
-Comp  badge: resource_tdx_2_1t59tdtsvv7sc0nej3z585w5nmqpq3z5cms7xdwvkyqaqreu9j3rvyu
-Component: component_tdx_2_1czzxynn4m4snhattvdf6knlyfs3ss70yufj975uh2mdhp8jes938sd
+Owner badge: resource_tdx_2_1t5rh6ck7f4z4dlhp5zy6qjqfhmpqd989qkue072wyfxmy8e8yc3kut
+Watch badge: resource_tdx_2_1t5vc6prj2wylnth5q24xn5k4j2uertcwy3v2zxlcycld5w2dxvvx37
+Comp  badge: resource_tdx_2_1thh46h09q746p2rstrkg60p0ve0rza750t7ykcyqcw74pne5n7e9s6
+Component: component_tdx_2_1cryx5n3tmzw3uhy93ckdcjujzacc8wfftxplykssfjm7krwlutwhpc
+
+WATCHER: account_tdx_2_16yemp85snnrmzrhp56vc892xp5098dqqduljmp9rlycp8h03vwatch
 
 ------------------
 CALL_FUNCTION
-    Address("package_tdx_2_1p4pcmxq86t46g30rzs4tvmzlwsf6pr23c7vf694j4ywan7usy7yplt")
+    Address("package_tdx_2_1phrzx0ccda63uwxw5u2dxghavk0l4as0r6zaaffr4jvu8fsu6ut3xk")
     "Deployer"
     "instantiate"
     ;
@@ -70,21 +75,21 @@ CALL_METHOD
     ;
 ------------------
 CALL_FUNCTION
-    Address("package_tdx_2_1p527rqesssgtadvr23elxrnrt6rw2jnfa5ke8n85ykcxmvjt06cvv6")
+    Address("package_tdx_2_1pk4su4de0gqlx9ljw3c9ydf6xzf8tfsy3eydjx0tky0v4529f5gp27")
     "RandomComponent"
     "instantiate"
-    Address("resource_tdx_2_1t4fxtpmk6c5dhfx9jk9zydqy90k7jw2lpwf0dv0dctec2gmh797320")
-    Address("resource_tdx_2_1thw49lvlthndn2rfmey7p6thduqvlt8ayd5jjdq8gm6xq3y255tcx8")
+    Address("resource_tdx_2_1t5rh6ck7f4z4dlhp5zy6qjqfhmpqd989qkue072wyfxmy8e8yc3kut")
+    Address("resource_tdx_2_1t5vc6prj2wylnth5q24xn5k4j2uertcwy3v2zxlcycld5w2dxvvx37")
     ;
 ------------------
 CALL_FUNCTION
-    Address("package_tdx_2_1p5xrcp59dxw0rjhzmnqs4a4rxd824edl4hhpha5rg7zuxm095xm8pu")
+    Address("package_tdx_2_1p572mvwx2x8e6kz64e6msded90e4nkx64muynfqwmtkyps7uqeh2mu")
     "ExampleCallerNoAuth"
     "instantiate"
     ;
 ------
 CALL_METHOD
-    Address("component_tdx_2_1cqjyxut4jylsfnqr0799xuec76haccmyj5hfpkq68qx3c8rzrad9vg")
+    Address("component_tdx_2_1cz9zj5scunpj4calaatt56yu9rjyt7kacr9cqqd4r8kpj9n9z63uga")
     "request_mint"
     ;
 ----
