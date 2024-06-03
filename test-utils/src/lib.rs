@@ -2,8 +2,9 @@ use std::marker::PhantomData;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt};
 use radix_engine::vm::NativeVmExtension;
-use scrypto_unit::{TestDatabase, TestRunner};
-use transaction::prelude::*;
+use radix_common::prelude::*;
+use radix_transactions::prelude::*;
+use scrypto_test::prelude::*;
 
 pub mod cargo;
 use crate::cargo::*;
@@ -28,31 +29,32 @@ pub struct RandomTestEnv<E: NativeVmExtension, D: TestDatabase> {
 }
 
 impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
-    pub fn execute_with_seed(&mut self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> CommitResult {
+    pub fn execute_with_seed(&mut self, test_runner: &mut LedgerSimulator<E, D>, random_bytes: Vec<u8>) -> CommitResult {
         let receipt = self.try_execute_next(test_runner, random_bytes);
         return receipt.expect_commit_success().clone();
     }
 
-    pub fn execute_next(&mut self, test_runner: &mut TestRunner<E, D>, random_number: u32) -> CommitResult {
+    pub fn execute_next(&mut self, test_runner: &mut LedgerSimulator<E, D>, random_number: u32) -> CommitResult {
         let random_bytes: Vec<u8> = Self::deterministic_bytes_from_number(random_number);
         let receipt = self.try_execute_next(test_runner, random_bytes);
         return receipt.expect_commit_success().clone();
     }
 
-    pub fn try_execute_next(&mut self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> TransactionReceipt {
+    pub fn try_execute_next(&mut self, test_runner: &mut LedgerSimulator<E, D>, random_bytes: Vec<u8>) -> TransactionReceipt {
         self.callback_seq += 1;
         return self.try_execute(test_runner, self.callback_seq, random_bytes);
     }
 
-    pub fn execute(&self, test_runner: &mut TestRunner<E, D>,
+    pub fn execute(&self, test_runner: &mut LedgerSimulator<E, D>,
                    callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
         let receipt = self.try_execute(test_runner, callback_id, random_bytes);
         return receipt.expect_commit_success().clone();
     }
 
-    pub fn try_execute(&self, test_runner: &mut TestRunner<E, D>, callback_id: u32, random_bytes: Vec<u8>) -> TransactionReceipt {
-        let receipt = test_runner.execute_manifest_ignoring_fee(
+    pub fn try_execute(&self, test_runner: &mut LedgerSimulator<E, D>, callback_id: u32, random_bytes: Vec<u8>) -> TransactionReceipt {
+        let receipt = test_runner.execute_manifest(
             ManifestBuilder::new()
+                .lock_fee_from_faucet()
                 .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE)
                 .call_method(
                     self.component,
@@ -63,9 +65,10 @@ impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
         return receipt;
     }
 
-    pub fn handle_error(&self, test_runner: &mut TestRunner<E, D>, callback_id: u32) -> CommitResult {
-        let receipt = test_runner.execute_manifest_ignoring_fee(
+    pub fn handle_error(&self, test_runner: &mut LedgerSimulator<E, D>, callback_id: u32) -> CommitResult {
+        let receipt = test_runner.execute_manifest(
             ManifestBuilder::new()
+                .lock_fee_from_faucet()
                 .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE)
                 .call_method(
                     self.component,
@@ -78,14 +81,15 @@ impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
         return result.clone();
     }
 
-    pub fn update_royalties(&self, test_runner: &mut TestRunner<E, D>, caller_component: ComponentAddress, royalty_level: u8) -> CommitResult {
+    pub fn update_royalties(&self, test_runner: &mut LedgerSimulator<E, D>, caller_component: ComponentAddress, royalty_level: u8) -> CommitResult {
         let receipt = self.try_update_royalties(test_runner, caller_component, royalty_level);
         return receipt.expect_commit_success().clone();
     }
 
-    pub fn try_update_royalties(&self, test_runner: &mut TestRunner<E, D>, caller_component: ComponentAddress, royalty_level: u8) -> TransactionReceipt {
-        let receipt = test_runner.execute_manifest_ignoring_fee(
+    pub fn try_update_royalties(&self, test_runner: &mut LedgerSimulator<E, D>, caller_component: ComponentAddress, royalty_level: u8) -> TransactionReceipt {
+        let receipt = test_runner.execute_manifest(
             ManifestBuilder::new()
+                .lock_fee_from_faucet()
                 .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE)
                 .call_method(
                     self.component,
@@ -106,7 +110,7 @@ impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
 }
 
 pub fn deploy_random_component<E: NativeVmExtension, D: TestDatabase>
-(test_runner: &mut TestRunner<E, D>) -> RandomTestEnv<E, D> {
+(test_runner: &mut LedgerSimulator<E, D>) -> RandomTestEnv<E, D> {
     let rev = get_dependency_rev(std::env::current_dir().unwrap());
     let hash = rev.expect("Can't find dependency on package \"test-utils\" from dot-random!");
 
@@ -121,7 +125,7 @@ pub fn deploy_random_component<E: NativeVmExtension, D: TestDatabase>
 }
 
 pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
-(test_runner: &mut TestRunner<E, D>, dir_royalties: &str, dir_component: &str) -> RandomTestEnv<E, D> {
+(test_runner: &mut LedgerSimulator<E, D>, dir_royalties: &str, dir_component: &str) -> RandomTestEnv<E, D> {
     let encoder = AddressBech32Encoder::for_simulator();
     let (public_key, _, owner_account) = test_runner.new_allocated_account();
 
@@ -141,7 +145,7 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
     }
 
     // Instantiate the DynamicRoyalties.
-    let receipt = test_runner.execute_system_transaction_with_preallocated_addresses(
+    let receipt = test_runner.execute_system_transaction(
         vec![
             InstructionV1::CallFunction {
                 package_address: DynamicPackageAddress::Static(ro_package),
@@ -156,8 +160,8 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
                 method_name: "deposit_batch".to_string(),
                 args: manifest_args!(ManifestExpression::EntireWorktop).into(),
             }],
-        pre_allocated_addresses,
         btreeset!(NonFungibleGlobalId::from_public_key(&public_key)),
+        pre_allocated_addresses,
     );
 
     let commit = receipt.expect_commit_success();
@@ -174,7 +178,7 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
     let rc_package = PackageAddress::new_or_panic(RANDOM_PACKAGE);
     test_runner.compile_and_publish_at_address(dir_component, rc_package);
 
-    let receipt = test_runner.execute_system_transaction_with_preallocated_addresses(
+    let receipt = test_runner.execute_system_transaction(
         vec![
             InstructionV1::CallFunction {
                 package_address: DynamicPackageAddress::Static(rc_package),
@@ -187,6 +191,7 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
                 method_name: "deposit_batch".to_string(),
                 args: manifest_args!(ManifestExpression::EntireWorktop).into(),
             }],
+        btreeset!(NonFungibleGlobalId::from_public_key(&public_key)),
         vec![(
                  BlueprintId::new(&rc_package, "RandomComponent"),
                  GlobalAddress::new_or_panic(RANDOM_COMPONENT),
@@ -197,7 +202,6 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
                  GlobalAddress::new_or_panic(RANDOM_BADGE),
              )
                  .into()],
-        btreeset!(NonFungibleGlobalId::from_public_key(&public_key)),
     );
 
     let res = receipt.expect_commit_success();

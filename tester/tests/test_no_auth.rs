@@ -1,19 +1,19 @@
-use scrypto_unit::*;
-use transaction::prelude::*;
+use scrypto_test::prelude::*;
 
 mod common;
 
 #[test]
 fn request_mint_no_auth() {
     // Arrange
-    let mut test_runner = TestRunnerBuilder::new().build();
+    let mut test_runner = LedgerSimulatorBuilder::new().build();
 
     let (mut random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
     // 1. Request mint - should return callback id: 1
-    let receipt = test_runner.execute_manifest_ignoring_fee(
+    let receipt = test_runner.execute_manifest(
         ManifestBuilder::new()
+            .lock_fee_from_faucet()
             .call_method(
                 example_component,
                 "request_mint",

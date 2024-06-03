@@ -1,4 +1,4 @@
-use radix_engine::prelude::NodeId;
+use radix_common::prelude::NodeId;
 
 pub const ROYAL_PACKAGE: [u8; NodeId::LENGTH] = [
     13, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 127, 127, 127, 19, 19,

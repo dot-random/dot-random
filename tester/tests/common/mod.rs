@@ -2,12 +2,11 @@ use std::env;
 
 use radix_engine::vm::NoExtension;
 use scrypto_test::prelude::InMemorySubstateDatabase;
-use scrypto_unit::*;
-use transaction::prelude::*;
+use scrypto_test::prelude::*;
 
 use test_utils::{deploy_random_component_from_dir, RandomTestEnv};
 
-pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InMemorySubstateDatabase>)
+pub fn deploy_component_and_caller(test_runner: &mut LedgerSimulator<NoExtension, InMemorySubstateDatabase>)
         -> (RandomTestEnv<NoExtension, InMemorySubstateDatabase>, ComponentAddress) {
     // dir is different in Debug mode
     let root_dir = env::current_dir().ok().unwrap().ends_with("dot-random");
@@ -23,7 +22,7 @@ pub fn deploy_component_and_caller(test_runner: &mut TestRunner<NoExtension, InM
     return (env, example_component);
 }
 
-pub fn deploy_caller_no_auth(test_runner: &mut TestRunner<NoExtension, InMemorySubstateDatabase>,
+pub fn deploy_caller_no_auth(test_runner: &mut LedgerSimulator<NoExtension, InMemorySubstateDatabase>,
                              dir_example: &str) -> ComponentAddress {
     let package_address2 = test_runner.publish_retain_blueprints(
         dir_example,

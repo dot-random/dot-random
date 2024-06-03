@@ -1,9 +1,5 @@
 use std::env;
-use radix_engine::types::*;
-use scrypto::prelude::*;
-use scrypto_unit::*;
-use transaction::builder::*;
-use transaction::prelude::*;
+use scrypto_test::prelude::*;
 
 const ROYAL_PACKAGE: [u8; NodeId::LENGTH] = [
     13, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 55, 55, 55, 1, 0, 127, 127, 127, 19, 19,
@@ -20,7 +16,7 @@ fn test_request_random() {
     let dir_royal = if root_dir { "./royalties" } else { "../royalties" };
 
     // Set up environment.
-    let mut test_runner = TestRunnerBuilder::new().build();
+    let mut test_runner = LedgerSimulatorBuilder::new().build();
 
     // Create an account
     let (public_key, _private_key, account) = test_runner.new_allocated_account();
@@ -42,7 +38,7 @@ fn test_request_random() {
         ).into());
     }
 
-    let receipt = test_runner.execute_system_transaction_with_preallocated_addresses(
+    let receipt = test_runner.execute_system_transaction(
         vec![
             InstructionV1::CallFunction {
                 package_address: DynamicPackageAddress::Static(royalties_package),
@@ -57,8 +53,8 @@ fn test_request_random() {
                 method_name: "deposit_batch".to_string(),
                 args: manifest_args!(ManifestExpression::EntireWorktop).into(),
             }],
-        pre_allocated_addresses,
         btreeset!(NonFungibleGlobalId::from_public_key(&public_key)),
+        pre_allocated_addresses,
     );
 
     println!("instantiate receipt:\n{:?}\n", receipt);
@@ -70,8 +66,9 @@ fn test_request_random() {
     let package_address = test_runner.compile_and_publish(this_package!());
 
     // Instantiate the Component.
-    let receipt = test_runner.execute_manifest_ignoring_fee(
+    let receipt = test_runner.execute_manifest(
         ManifestBuilder::new()
+            .lock_fee_from_faucet()
             .call_function(
                 package_address,
                 "RandomComponent",
@@ -91,8 +88,9 @@ fn test_request_random() {
 
     let resource = test_runner.create_freely_mintable_fungible_resource(OwnerRole::None, Some(Decimal::ONE), DIVISIBILITY_NONE, account);
 
-    let receipt = test_runner.execute_manifest_ignoring_fee(
+    let receipt = test_runner.execute_manifest(
         ManifestBuilder::new()
+            .lock_fee_from_faucet()
             .take_all_from_worktop(resource, "bucket1")
             .with_name_lookup(|builder, lookup| {
                 builder.call_method(

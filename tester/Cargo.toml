@@ -5,18 +5,17 @@ version = "0.1.0"
 
 
 [dependencies]
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2"}
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
+sbor = { version = "1.2.0" }
+scrypto = { version = "1.2.0" }
 random = { path = "../random" }
 component = { path = "../component" }
 
 [dev-dependencies]
 test-utils = { path = "../test-utils", features = ["test"] }
 tester = { path = ".", features = ["test"] }
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
-radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
-scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
-scrypto-test = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
+radix-transactions = { version = "1.2.0" }
+radix-engine = { version = "1.2.0" }
+scrypto-test = { version = "1.2.0" }
 
 [features]
 default = []

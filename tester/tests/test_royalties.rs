@@ -1,5 +1,4 @@
-use scrypto_unit::*;
-use transaction::prelude::*;
+use scrypto_test::prelude::*;
 
 mod common;
 
@@ -7,14 +6,15 @@ mod common;
 #[test]
 fn royalties_not_set() {
     // Arrange
-    let mut test_runner = TestRunnerBuilder::new().build();
+    let mut test_runner = LedgerSimulatorBuilder::new().build();
 
     let (_random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
     // 1. Request mint - should return callback id: 1
-    let receipt = test_runner.execute_manifest_ignoring_fee(
+    let receipt = test_runner.execute_manifest(
         ManifestBuilder::new()
+            .lock_fee_from_faucet()
             .call_method(
                 example_component,
                 "request_mint",
@@ -30,7 +30,7 @@ fn royalties_not_set() {
 #[test]
 fn some_royalties() {
     // Arrange
-    let mut test_runner = TestRunnerBuilder::new().build();
+    let mut test_runner = LedgerSimulatorBuilder::new().build();
 
     let (random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
@@ -39,8 +39,9 @@ fn some_royalties() {
     random_env.update_royalties(&mut test_runner, example_component, 3u8);
 
     // 2. Request mint - should charge additional royalties
-    let receipt = test_runner.execute_manifest_ignoring_fee(
+    let receipt = test_runner.execute_manifest(
         ManifestBuilder::new()
+            .lock_fee_from_faucet()
             .call_method(
                 example_component,
                 "request_mint",
@@ -56,7 +57,7 @@ fn some_royalties() {
 #[test]
 fn update_royalties() {
     // Arrange
-    let mut test_runner = TestRunnerBuilder::new().build();
+    let mut test_runner = LedgerSimulatorBuilder::new().build();
     let (random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
 
     // Act
@@ -67,8 +68,9 @@ fn update_royalties() {
     random_env.update_royalties(&mut test_runner, example_component, 9u8);
 
     // 3. Request mint - should charge additional royalties
-    let receipt = test_runner.execute_manifest_ignoring_fee(
+    let receipt = test_runner.execute_manifest(
         ManifestBuilder::new()
+            .lock_fee_from_faucet()
             .call_method(
                 example_component,
                 "request_mint",
@@ -84,10 +86,11 @@ fn update_royalties() {
 #[test]
 fn initial_royalties() {
     // Arrange
-    let mut test_runner = TestRunnerBuilder::new().build();
+    let mut test_runner = LedgerSimulatorBuilder::new().build();
     let (random_env, example_component) = common::deploy_component_and_caller(&mut test_runner);
-    let receipt = test_runner.execute_manifest_ignoring_fee(
+    let receipt = test_runner.execute_manifest(
         ManifestBuilder::new()
+            .lock_fee_from_faucet()
             .call_method(
                 random_env.component,
                 "request_random",
