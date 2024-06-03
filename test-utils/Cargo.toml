@@ -10,8 +10,9 @@ sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
 scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.2" }
-home = "0.5.5"
+home = "0.5.9"
 getrandom = { version = "0.2", features = ["js"] }
+toml = "0.8.12"
 
 [dev-dependencies]
 

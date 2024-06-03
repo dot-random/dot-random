@@ -2,8 +2,9 @@ use std::marker::PhantomData;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt};
 use radix_engine::vm::NativeVmExtension;
-use scrypto_unit::{TestRunner, TestDatabase};
+use scrypto_unit::{TestDatabase, TestRunner};
 use transaction::prelude::*;
+
 pub mod cargo;
 use crate::cargo::*;
 pub mod constants;
@@ -27,7 +28,6 @@ pub struct RandomTestEnv<E: NativeVmExtension, D: TestDatabase> {
 }
 
 impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
-
     pub fn execute_with_seed(&mut self, test_runner: &mut TestRunner<E, D>, random_bytes: Vec<u8>) -> CommitResult {
         let receipt = self.try_execute_next(test_runner, random_bytes);
         return receipt.expect_commit_success().clone();
@@ -45,7 +45,7 @@ impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
     }
 
     pub fn execute(&self, test_runner: &mut TestRunner<E, D>,
-                       callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
+                   callback_id: u32, random_bytes: Vec<u8>) -> CommitResult {
         let receipt = self.try_execute(test_runner, callback_id, random_bytes);
         return receipt.expect_commit_success().clone();
     }
@@ -86,7 +86,7 @@ impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
     pub fn try_update_royalties(&self, test_runner: &mut TestRunner<E, D>, caller_component: ComponentAddress, royalty_level: u8) -> TransactionReceipt {
         let receipt = test_runner.execute_manifest_ignoring_fee(
             ManifestBuilder::new()
-                .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE )
+                .create_proof_from_account_of_amount(self.owner_account, self.watcher_badge, Decimal::ONE)
                 .call_method(
                     self.component,
                     "update_caller_royalties",
@@ -106,7 +106,12 @@ impl<E: NativeVmExtension, D: TestDatabase> RandomTestEnv<E, D> {
 }
 
 pub fn deploy_random_component<E: NativeVmExtension, D: TestDatabase>
-(test_runner: &mut TestRunner<E, D>, commit_hash: &str) -> RandomTestEnv<E, D> {
+(test_runner: &mut TestRunner<E, D>) -> RandomTestEnv<E, D> {
+    let rev = get_dependency_rev(std::env::current_dir().unwrap());
+    let hash = rev.expect("Can't find dependency on package \"test-utils\" from dot-random!");
+
+    let commit_hash = &*hash;
+
     let royalties_path = get_repo_sub_dir("dot-random", commit_hash, "royalties");
     let dir_royalties = royalties_path.to_str().unwrap();
     let component_path = get_repo_sub_dir("dot-random", commit_hash, "component");
