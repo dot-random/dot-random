@@ -93,7 +93,7 @@ fn read_toml<P: AsRef<Path>>(path: P) -> Option<Value> {
 
 fn get_tag_and_rev(toml_v: &Value) -> (Option<&str>, Option<&str>) {
     let dep_filter: fn(&Table) -> Option<&Value> = |x: &Table| -> Option<&Value> {
-        let git_repo: Value = Value::String("https://github.com/radixdlt/radixdlt-scrypto".to_string());
+        let git_repo: Value = Value::String("https://github.com/dot-random/dot-random".to_string());
         let dep_package: Value = Value::String("test-utils".to_string());
         for (_key, value) in x {
             if let Value::Table(r) = value {
