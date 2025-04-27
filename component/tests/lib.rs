@@ -26,35 +26,35 @@ fn test_request_random() {
     test_runner.compile_and_publish_at_address(dir_royal, royalties_package);
 
     // Instantiate the DynamicRoyalties.
-    let mut manifest_reservations: Vec<ManifestAddressReservation> = Vec::new();
-    let mut pre_allocated_addresses: Vec<PreAllocatedAddress> = Vec::new();
+    let mut builder = ManifestBuilder::<SystemTransactionManifestV1>::new_typed();
+
+    let mut manifest_reservations: Vec<String> = Vec::new();
     for i in 0..10u8 {
-        manifest_reservations.push(ManifestAddressReservation(i.into()));
+        let reservation = i.to_string();
+        manifest_reservations.push(reservation.clone());
         let mut addr = ROYAL_ADDRESS.clone();
         addr[addr.len() - 5] = i;
-        pre_allocated_addresses.push((
-            BlueprintId::new(&royalties_package, "DynamicRoyalties"),
-            GlobalAddress::new_or_panic(addr),
-        ).into());
+        builder = builder.preallocate_address(reservation, GlobalAddress::new_or_panic(addr), royalties_package, "DynamicRoyalties");
     }
 
     let receipt = test_runner.execute_system_transaction(
-        vec![
-            InstructionV1::CallFunction {
-                package_address: DynamicPackageAddress::Static(royalties_package),
-                blueprint_name: "Deployer".to_string(),
-                function_name: "instantiate_with_addresses".to_string(),
-                args: manifest_args!(
-                    manifest_reservations,
-                ).into(),
-            },
-            InstructionV1::CallMethod {
-                address: DynamicGlobalAddress::Static(GlobalAddress::new_or_panic(account.into())),
-                method_name: "deposit_batch".to_string(),
-                args: manifest_args!(ManifestExpression::EntireWorktop).into(),
-            }],
-        btreeset!(NonFungibleGlobalId::from_public_key(&public_key)),
-        pre_allocated_addresses,
+        builder.with_name_lookup(|builder, lookup| {
+            let args: Vec<ManifestAddressReservation> = manifest_reservations.into_iter()
+                .map(|s| lookup.address_reservation(s))
+                .collect();
+            builder.call_function(
+                DynamicPackageAddress::Static(royalties_package),
+                "Deployer".to_string(),
+                "instantiate_with_addresses".to_string(),
+                manifest_args!(args)
+            )
+        })
+            .call_method(
+                DynamicGlobalAddress::Static(GlobalAddress::new_or_panic(account.into())),
+                "deposit_batch".to_string(),
+                manifest_args!(ManifestExpression::EntireWorktop)
+            ).build(),
+        btreeset!(NonFungibleGlobalId::from_public_key(&public_key))
     );
 
     println!("instantiate receipt:\n{:?}\n", receipt);
@@ -75,7 +75,7 @@ fn test_request_random() {
                 "instantiate",
                 manifest_args!(owner_badge, watcher_badge),
             )
-            .deposit_batch(account)
+            .deposit_entire_worktop(account)
             .build(),
         vec![NonFungibleGlobalId::from_public_key(&public_key)],
     );

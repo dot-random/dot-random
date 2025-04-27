@@ -2,7 +2,7 @@
 .Random - randomness on Radix ledger
 
 
-#### Uses Scrypto `v1.2.0`
+#### Uses Scrypto `v1.3.0`
 ### Usage Examples
 See [examples](https://github.com/dot-random/examples).
 

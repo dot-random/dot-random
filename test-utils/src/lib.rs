@@ -132,36 +132,36 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
     let ro_package = PackageAddress::new_or_panic(ROYAL_PACKAGE);
     test_runner.compile_and_publish_at_address(dir_royalties, ro_package);
 
-    let mut manifest_reservations: Vec<ManifestAddressReservation> = Vec::new();
-    let mut pre_allocated_addresses: Vec<PreAllocatedAddress> = Vec::new();
+    let mut builder = ManifestBuilder::<SystemTransactionManifestV1>::new_typed();
+
+    let mut manifest_reservations: Vec<String> = Vec::new();
     for i in 0..10u8 {
-        manifest_reservations.push(ManifestAddressReservation(i.into()));
+        let reservation: String = i.to_string();
+        manifest_reservations.push(reservation.clone());
         let mut addr = ROYAL_ADDRESS.clone();
         addr[addr.len() - 5] = i;
-        pre_allocated_addresses.push((
-            BlueprintId::new(&ro_package, "DynamicRoyalties"),
-            GlobalAddress::new_or_panic(addr),
-        ).into());
+        builder = builder.preallocate_address(reservation, GlobalAddress::new_or_panic(addr), ro_package, "DynamicRoyalties");
     }
 
     // Instantiate the DynamicRoyalties.
     let receipt = test_runner.execute_system_transaction(
-        vec![
-            InstructionV1::CallFunction {
-                package_address: DynamicPackageAddress::Static(ro_package),
-                blueprint_name: "Deployer".to_string(),
-                function_name: "instantiate_with_addresses".to_string(),
-                args: manifest_args!(
-                    manifest_reservations
-                ).into(),
-            },
-            InstructionV1::CallMethod {
-                address: DynamicGlobalAddress::Static(GlobalAddress::new_or_panic(owner_account.into())),
-                method_name: "deposit_batch".to_string(),
-                args: manifest_args!(ManifestExpression::EntireWorktop).into(),
-            }],
-        btreeset!(NonFungibleGlobalId::from_public_key(&public_key)),
-        pre_allocated_addresses,
+        builder.with_name_lookup(|builder, lookup| {
+            let args: Vec<ManifestAddressReservation> = manifest_reservations.into_iter()
+                .map(|s| lookup.address_reservation(s))
+                .collect();
+            builder.call_function(
+                DynamicPackageAddress::Static(ro_package),
+                "Deployer".to_string(),
+                "instantiate_with_addresses".to_string(),
+                manifest_args!(args)
+            )
+        })
+        .call_method(
+            DynamicGlobalAddress::Static(GlobalAddress::new_or_panic(owner_account.into())),
+            "deposit_batch".to_string(),
+            manifest_args!(ManifestExpression::EntireWorktop)
+        ).build(),
+        btreeset!(NonFungibleGlobalId::from_public_key(&public_key))
     );
 
     let commit = receipt.expect_commit_success();
@@ -178,30 +178,26 @@ pub fn deploy_random_component_from_dir<E: NativeVmExtension, D: TestDatabase>
     let rc_package = PackageAddress::new_or_panic(RANDOM_PACKAGE);
     test_runner.compile_and_publish_at_address(dir_component, rc_package);
 
+    let mut builder = ManifestBuilder::<SystemTransactionManifestV1>::new_typed();
+
+    builder = builder.preallocate_address("comp_res", GlobalAddress::new_or_panic(RANDOM_COMPONENT), rc_package, "RandomComponent");
+    builder = builder.preallocate_address("badg_res", GlobalAddress::new_or_panic(RANDOM_BADGE), RESOURCE_PACKAGE, FUNGIBLE_RESOURCE_MANAGER_BLUEPRINT.to_owned());
+
     let receipt = test_runner.execute_system_transaction(
-        vec![
-            InstructionV1::CallFunction {
-                package_address: DynamicPackageAddress::Static(rc_package),
-                blueprint_name: "RandomComponent".to_string(),
-                function_name: "instantiate_addr_badge".to_string(),
-                args: manifest_args!(owner_badge, watcher_badge, ManifestAddressReservation(0), ManifestAddressReservation(1)).into(),
-            },
-            InstructionV1::CallMethod {
-                address: DynamicGlobalAddress::Static(GlobalAddress::new_or_panic(owner_account.into())),
-                method_name: "deposit_batch".to_string(),
-                args: manifest_args!(ManifestExpression::EntireWorktop).into(),
-            }],
-        btreeset!(NonFungibleGlobalId::from_public_key(&public_key)),
-        vec![(
-                 BlueprintId::new(&rc_package, "RandomComponent"),
-                 GlobalAddress::new_or_panic(RANDOM_COMPONENT),
-             )
-                 .into(),
-             (
-                 BlueprintId::new(&RESOURCE_PACKAGE, FUNGIBLE_RESOURCE_MANAGER_BLUEPRINT.to_owned()),
-                 GlobalAddress::new_or_panic(RANDOM_BADGE),
-             )
-                 .into()],
+        builder.with_name_lookup(|builder, lookup| {
+            builder.call_function(
+                DynamicPackageAddress::Static(rc_package),
+                "RandomComponent".to_string(),
+                "instantiate_addr_badge".to_string(),
+                manifest_args!(owner_badge, watcher_badge, lookup.address_reservation("comp_res"), lookup.address_reservation("badg_res"))
+            )
+        })
+            .call_method(
+                DynamicGlobalAddress::Static(GlobalAddress::new_or_panic(owner_account.into())),
+                "deposit_batch".to_string(),
+                manifest_args!(ManifestExpression::EntireWorktop)
+            ).build(),
+        btreeset!(NonFungibleGlobalId::from_public_key(&public_key))
     );
 
     let res = receipt.expect_commit_success();
